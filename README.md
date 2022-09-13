@@ -83,6 +83,7 @@ How do we finally count the results of the voting.
 
 - There should now be a smart contract service which will provide all the smart contract related functionalities.
 
+```typescript
 class SmartContractService {
 
 registerElection(smartContractAddress, electionId, electionDetails)
@@ -98,7 +99,7 @@ updateElection(smartContractAddress, electionId, electionDetails)
 generateTokens(smartContractAddress, electionId, numberOfTokens)
 
 }
-
+```
 ## **Contract**
 
 The smart contract will be able to handle several elections simultaneously. Each election will have a list Tezos public keys which will be used to validate pre-signed tokens as discussed above. The tokens are generated using the private key of the public key.
