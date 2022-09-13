@@ -86,17 +86,17 @@ How do we finally count the results of the voting.
 ```typescript
 class SmartContractService {
 
-registerElection(smartContractAddress, electionId, electionDetails)
+  registerElection(smartContractAddress, electionId, electionDetails)
 
-validateToken(smartContractAddress, electionId, token)
+  validateToken(smartContractAddress, electionId, token)
 
-recordVote(smartContractAddress, electionId, voteDetails)
+  recordVote(smartContractAddress, electionId, voteDetails)
 
-getVoteData(smartContractAddress, electionId)
+  getVoteData(smartContractAddress, electionId)
 
-updateElection(smartContractAddress, electionId, electionDetails)
+  updateElection(smartContractAddress, electionId, electionDetails)
 
-generateTokens(smartContractAddress, electionId, numberOfTokens)
+  generateTokens(smartContractAddress, electionId, numberOfTokens)
 
 }
 ```
