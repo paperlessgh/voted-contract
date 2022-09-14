@@ -168,7 +168,7 @@ entry add_pub_key(e_id: string, pub_key: key) {
     }
 
     effect {
-        election.update(e_id, { election_pub_keys += [pub_key] })
+        election[e_id].election_pub_keys.add(pub_key)
     }
 }
 
