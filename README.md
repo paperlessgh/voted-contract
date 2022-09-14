@@ -131,6 +131,7 @@ The election storage is a big\_map with keys as election\_id and value is a reco
 - **description** - description of the election.
 - **pub\_keys** - public keys that are related to the election tokens.
 - **votes** - populated as votes are being cast
+- **vote_count** - records number of votes
 
 #### **Category**
 
@@ -172,9 +173,8 @@ The smart contract shall have the following entry points;
 - This entry point takes as input an entire election record, and the election\_id.
 - If the election\_id does not exist a new entry is made in the election storage.
   - The election record here does not include the votes
-  - The votes should be initialized to an empty array.
-  - There should only be one item in the pub\_keys if the election is private.
-  - The organizer should be initialized to the caller.
+  - The votes should be initialized to big_map or iterable_big_map based on the.
+  - There should be at least one item in the pub\_keys if the election is private.
 - If the election\_id already exists it will just replace with the new election record.
   - It should fail if the current time is greater than the start time.
   - The caller should be the organizer.
@@ -190,8 +190,8 @@ The smart contract shall have the following entry points;
 
 #### **Vote**
 
-- A vote is just a record as follows (election\_id, category\_id, candidate\_id, token, number\_of\_votes)
-- The token is only required in private election (check the visibility )
+- A vote is just a record as follows (election\_id, category\_id, candidate\_id, number\_of\_votes)
+- A token is required in private election (check the visibility )
 - The number\_of\_votes is optional and is 1 by default.
 - Can be called by any tezos account.
 - should verify that the token was signed by one of the keys in pub\_keys if election is private
@@ -215,5 +215,5 @@ The exact process is described above in the **Election Setup** section of this d
 2. The public key is added to the smart contract.
 3. For each user, a random piece of data is generated, let that be d .
 4. This is then signed using the private key of the tezos account, to obtain a signature sd .
-5. Both the data d and signature sd is packed into a tuple (s, sd) data structure to be unpacked by the smart contract and verified with the public keys stored on the smart contract.
+5. Both the data d and signature sd is packed into a tuple (d, sd) data structure to be unpacked by the smart contract and verified with the public keys stored on the smart contract.
 6. Send the base58check encoded version of the packed data to the user.

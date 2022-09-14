@@ -1,0 +1,265 @@
+archetype voted_simple(owner: address) with metadata ""
+
+constant INVALID_START_TIME: string = "INVALID START TIME"
+constant INVALID_STOP_TIME: string = "INVALID STOP TIME"
+constant INVALID_COST_PER_VOTE: string = "COST PER VOTE SHOULD BE GREATER THAN ZER0"
+constant INVALID_CATEGORY: string = "CATEGORY DOES NOT EXIST"
+constant INVALID_CANDIDATE: string = "CANDIDATE DOES NOT EXIST"
+constant INVALID_CALLER: string = "CALLER IS UNAUTHORIZED"
+constant INVALID_ELECTION: string = "ELECTION DOES NOT EXIST"
+constant INVALID_PUB_KEY: string = "PUB KEY ALREADY EXISTS FOR ELECTION"
+constant INVALID_PERIOD: string = "CANNOT INVOKE THIS FUNCTIONALITY AT THIS TIME"
+constant INVALID_TOKEN: string = "INVALID TOKEN"
+constant INVALID_TOKEN_DECODE: string = "INVALID TOKEN DECODE"
+constant INVALID_VOTE: string = "INVALID VOTE"
+constant INVALID_TOKEN_USED: string = "INVALID TOKEN USED"
+constant DUPLICATE_CATEGORY: string = "CANNOT HAVE MORE THAT ONE VOTE PARAM IN SAME CATEGORY"
+constant INSUFFICIENT_AMOUT: string = "INSUFFICIENT AMOUNT TO PAY FOR VOTE"
+constant INVALID_VOTE_COUNT: string = "THERE ARE TOO MANY VOTES THAN ALLOWED"
+
+enum ELECTION_VISIBILITY = | public | private
+
+enum ELECTION_MODE = | free | paid
+
+enum ELECTION_PERIOD = | pre | during | after
+
+record category {
+    category_title: string;
+    category_description: string;
+    category_vote_limit: nat = 1;
+    category_votes_count: nat = 0;
+}
+
+record candidate {
+    candidate_title: string;
+    candidate_description: string;
+    candidate_category_id: string;
+    candidate_votes_count: nat = 0;
+}
+
+record vote_param {
+    vote_canditate_id: string;
+    vote_category_id: string;
+    number_of_votes: nat;
+}
+
+record vote {
+    vote_election_id: string;
+    vote_params: list<vote_param>;
+    vote_token: option<bytes>;
+}
+
+record election_param {
+    election_id_param : string;
+    election_organizer_param: address;
+    election_title_param: string;
+    election_description_param: string;
+    election_start_time_param: date;
+    election_stop_time_param: date;
+    election_pub_keys_param: set<key>;
+    election_mode_param: ELECTION_MODE;
+    election_active_param: bool;
+    election_cost_per_vote_param: tez;
+    election_visibility_param: ELECTION_VISIBILITY;
+    election_categories_param: map<string, category>;
+    election_candidates_param: map<string, candidate>;
+}
+
+asset election identified by election_id to big_map {
+    election_id : string;
+    election_organizer: address;
+    election_title: string;
+    election_description: string;
+    election_start_time: date;
+    election_stop_time: date;
+    election_pub_keys: set<key>;
+    election_mode: ELECTION_MODE;
+    election_active: bool = true;
+    election_cost_per_vote: tez = 0tz;
+    election_visibility: ELECTION_VISIBILITY;
+    election_votes: big_map<bytes, list<vote_param>> = [];
+    election_categories: map<string, category>;
+    election_candidates: map<string, candidate>;
+    election_votes_count: nat = 0;
+}
+
+function validate_election_param(e: election_param): bool {
+    do_require(e.election_start_time_param > now, INVALID_START_TIME);
+    do_require(e.election_stop_time_param > e.election_start_time_param, INVALID_STOP_TIME);
+    if e.election_mode_param = paid then do_require(e.election_cost_per_vote_param > 0tz, INVALID_COST_PER_VOTE);
+    for (ck, cpv) in e.election_candidates_param do
+        do_require(contains(e.election_categories_param, cpv.candidate_category_id), INVALID_CATEGORY)
+    done;
+    return true
+}
+
+function election_period(s: date, d: date): ELECTION_PERIOD {
+    if now < s then return pre;
+    if now >= s and now <= d then return during;
+    return after
+}
+
+function is_pre_election(s: date, d: date): bool {
+    if election_period(s, d) = pre then return true;
+    return false
+}
+
+function is_during_election(s: date, d: date): bool {
+    if election_period(s, d) = during then return true;
+    return false
+}
+
+entry set_election(e: election_param) {
+    const params_valid = validate_election_param(e);
+    if not election.contains(e.election_id_param) then begin
+        // create new election
+        election.add({
+            election_id = e.election_id_param ;
+            election_organizer = e.election_organizer_param;
+            election_title = e.election_title_param;
+            election_description = e. election_description_param;
+            election_start_time = e.election_start_time_param;
+            election_stop_time = e.election_stop_time_param;
+            election_pub_keys = e.election_pub_keys_param;
+            election_mode = e.election_mode_param;
+            election_active = e.election_active_param;
+            election_cost_per_vote = e.election_cost_per_vote_param;
+            election_visibility = e.election_visibility_param;
+            election_categories  = e.election_categories_param;
+            election_candidates  = e.election_candidates_param
+        })
+    end else begin
+        // update existing election
+        do_require(caller = election[e.election_id_param].election_organizer, INVALID_CALLER);
+        do_require(
+            is_pre_election(election[e.election_id_param].election_start_time, election[e.election_id_param].election_stop_time),
+            INVALID_PERIOD
+        );
+        election.add({
+            election_id = e.election_id_param ;
+            election_organizer = e.election_organizer_param;
+            election_title = e.election_title_param;
+            election_description = e. election_description_param;
+            election_start_time = e.election_start_time_param;
+            election_stop_time = e.election_stop_time_param;
+            election_pub_keys = e.election_pub_keys_param;
+            election_mode = e.election_mode_param;
+            election_active = e.election_active_param;
+            election_cost_per_vote = e.election_cost_per_vote_param;
+            election_visibility = e.election_visibility_param;
+            election_categories  = e.election_categories_param;
+            election_candidates  = e.election_candidates_param
+        })
+    end
+    
+}
+
+entry add_pub_key(e_id: string, pub_key: key) {
+    require {
+        r1: election.contains(e_id) otherwise INVALID_ELECTION;
+        r2: caller = election[e_id].election_organizer otherwise INVALID_CALLER;
+        r3: not election[e_id].election_pub_keys.contains(pub_key) otherwise INVALID_PUB_KEY
+    }
+
+    effect {
+        election.update(e_id, { election_pub_keys += [pub_key] })
+    }
+}
+
+function validate_token(epubs: set<key>, token: bytes): bool {
+    const data_and_sig ?= unpack<bytes * signature>(token) : INVALID_TOKEN_DECODE;
+    var is_token_valid = false;
+    for pubk in epubs do
+        is_token_valid |= check_signature(pubk, data_and_sig[1], data_and_sig[0])
+    done;
+    return is_token_valid
+}
+
+function validate_vote_params(votes: list<vote_param>, e: asset_value<election>, t: bytes): bool {
+    do_require(is_during_election(e.election_start_time, e.election_stop_time), INVALID_PERIOD);
+    if e.election_visibility = private then begin
+        do_require(validate_token(e.election_pub_keys, t), INVALID_TOKEN);
+        do_fail_if(contains(e.election_votes, t), INVALID_TOKEN_USED)
+    end;
+    return true
+}
+
+entry register_vote(v: vote) {
+    const token: bytes = match v.vote_token with
+    | some(t) -> t
+    | none -> 0x00
+    end;
+    var e: asset_value<election> = [];
+    match election[v.vote_election_id] with
+    | some(ve) -> if validate_vote_params(v.vote_params, ve, token) then e := ve else fail(INVALID_VOTE)
+    | none -> fail(INVALID_ELECTION) 
+    end;
+    var vote_limit_check: map<string, nat> = [];
+    var vote_cost_check: tez = transferred;
+    for vp in v.vote_params do
+        do_require(contains(e.election_categories, vp.vote_category_id), INVALID_CATEGORY);
+        do_require(contains(e.election_candidates, vp.vote_canditate_id), INVALID_CANDIDATE);
+        const vote_cost = e.election_cost_per_vote * vp.number_of_votes;
+        vote_cost_check -= vote_cost;
+        if contains(vote_limit_check, vp.vote_category_id) then begin
+           const v_limit: nat = match vote_limit_check[vp.vote_category_id] with
+            | some(vl)-> vl
+            | none -> 0 
+            end;
+            const s: nat = v_limit + vp.number_of_votes;
+            vote_limit_check.update(
+                vp.vote_category_id,
+                some(s)
+            )
+        end else vote_limit_check.put(vp.vote_category_id, vp.number_of_votes);
+        var e_cats : category ?= e.election_categories[vp.vote_category_id] : INVALID_CATEGORY;
+        const v_limit: nat = match vote_limit_check[vp.vote_category_id] with
+        | some(vl)-> vl
+        | none -> 0 
+        end;
+        do_require(
+            e_cats.category_vote_limit < v_limit,
+            INVALID_VOTE_COUNT
+        );
+        do_require(vote_cost_check > 0tz, INSUFFICIENT_AMOUT);
+        var e_cand : candidate ?= e.election_candidates[vp.vote_canditate_id] : INVALID_CANDIDATE;
+        e_cats.category_votes_count := v_limit;
+        e_cand.candidate_votes_count += vp.number_of_votes;
+        election.update(v.vote_election_id, {
+            election_votes_count += vp.number_of_votes;
+            election_categories += [(vp.vote_category_id, e_cats)];
+            election_candidates += [(vp.vote_canditate_id, e_cand)]
+        });
+
+    done;
+
+    election[v.vote_election_id].election_votes.put(token, v.vote_params)
+}
+
+/* OWNERSHIP TRANSFER ------------------------------------------------------- */
+
+variable owner_candidate : option<address> = none
+
+entry declare_ownership(new_candidate : address) {
+  called by owner
+  effect {
+    owner_candidate := some(new_candidate);
+  }
+}
+
+entry claim_ownership() {
+  require {
+    ownership_r1: (owner_candidate ? the = caller : false) otherwise INVALID_CALLER
+  }
+  effect {
+    owner := caller;
+    owner_candidate := none
+  }
+}
+
+entry collect(collector : address) {
+  called by owner
+  effect {
+    transfer balance to collector
+  }
+}
