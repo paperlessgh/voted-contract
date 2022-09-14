@@ -77,18 +77,21 @@ asset election identified by election_id to big_map {
     election_active: bool = true;
     election_cost_per_vote: tez = 0tz;
     election_visibility: ELECTION_VISIBILITY;
-    election_votes: big_map<bytes, list<vote_param>> = [];
+    election_votes: map<bytes, list<vote_param>> = [];
     election_categories: map<string, category>;
     election_candidates: map<string, candidate>;
     election_votes_count: nat = 0;
 }
 
-function validate_election_param(e: election_param): bool {
+function validate_election(e: election_param): bool {
     do_require(e.election_start_time_param > now, INVALID_START_TIME);
     do_require(e.election_stop_time_param > e.election_start_time_param, INVALID_STOP_TIME);
     if e.election_mode_param = paid then do_require(e.election_cost_per_vote_param > 0tz, INVALID_COST_PER_VOTE);
     for (ck, cpv) in e.election_candidates_param do
-        do_require(contains(e.election_categories_param, cpv.candidate_category_id), INVALID_CATEGORY)
+        do_require(
+            contains(e.election_categories_param, cpv.candidate_category_id),
+            INVALID_CATEGORY
+        )
     done;
     return true
 }
@@ -110,7 +113,7 @@ function is_during_election(s: date, d: date): bool {
 }
 
 entry set_election(e: election_param) {
-    const params_valid = validate_election_param(e);
+    const params_valid = validate_election(e);
     if not election.contains(e.election_id_param) then begin
         // create new election
         election.add({
@@ -132,7 +135,10 @@ entry set_election(e: election_param) {
         // update existing election
         do_require(caller = election[e.election_id_param].election_organizer, INVALID_CALLER);
         do_require(
-            is_pre_election(election[e.election_id_param].election_start_time, election[e.election_id_param].election_stop_time),
+            is_pre_election(
+                election[e.election_id_param].election_start_time,
+                election[e.election_id_param].election_stop_time
+            ),
             INVALID_PERIOD
         );
         election.add({
@@ -175,7 +181,7 @@ function validate_token(epubs: set<key>, token: bytes): bool {
     return is_token_valid
 }
 
-function validate_vote_params(votes: list<vote_param>, e: asset_value<election>, t: bytes): bool {
+function validate_vote(e: asset_value<election>, t: bytes): bool {
     do_require(is_during_election(e.election_start_time, e.election_stop_time), INVALID_PERIOD);
     if e.election_visibility = private then begin
         do_require(validate_token(e.election_pub_keys, t), INVALID_TOKEN);
@@ -191,7 +197,7 @@ entry register_vote(v: vote) {
     end;
     var e: asset_value<election> = [];
     match election[v.vote_election_id] with
-    | some(ve) -> if validate_vote_params(v.vote_params, ve, token) then e := ve else fail(INVALID_VOTE)
+    | some(ve) -> if validate_vote(ve, token) then e := ve else fail(INVALID_VOTE)
     | none -> fail(INVALID_ELECTION) 
     end;
     var vote_limit_check: map<string, nat> = [];
@@ -212,22 +218,22 @@ entry register_vote(v: vote) {
                 some(s)
             )
         end else vote_limit_check.put(vp.vote_category_id, vp.number_of_votes);
-        var e_cats : category ?= e.election_categories[vp.vote_category_id] : INVALID_CATEGORY;
+        var e_cat : category ?= e.election_categories[vp.vote_category_id] : INVALID_CATEGORY;
         const v_limit: nat = match vote_limit_check[vp.vote_category_id] with
         | some(vl)-> vl
         | none -> 0 
         end;
         do_require(
-            e_cats.category_vote_limit < v_limit,
+            e_cat.category_vote_limit < v_limit,
             INVALID_VOTE_COUNT
         );
         do_require(vote_cost_check > 0tz, INSUFFICIENT_AMOUT);
         var e_cand : candidate ?= e.election_candidates[vp.vote_canditate_id] : INVALID_CANDIDATE;
-        e_cats.category_votes_count := v_limit;
+        e_cat.category_votes_count := v_limit;
         e_cand.candidate_votes_count += vp.number_of_votes;
         election.update(v.vote_election_id, {
             election_votes_count += vp.number_of_votes;
-            election_categories += [(vp.vote_category_id, e_cats)];
+            election_categories += [(vp.vote_category_id, e_cat)];
             election_candidates += [(vp.vote_canditate_id, e_cand)]
         });
 
