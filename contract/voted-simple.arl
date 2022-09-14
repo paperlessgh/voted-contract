@@ -97,19 +97,19 @@ function validate_election(e: election_param): bool {
 }
 
 function election_period(s: date, d: date): ELECTION_PERIOD {
-    if now < s then return pre;
-    if now >= s and now <= d then return during;
-    return after
+    return (
+      if now < s then pre
+      else if s <= now <= d then during
+      else after
+    )
 }
 
 function is_pre_election(s: date, d: date): bool {
-    if election_period(s, d) = pre then return true;
-    return false
+    return (election_period(s, d) = pre)
 }
 
 function is_during_election(s: date, d: date): bool {
-    if election_period(s, d) = during then return true;
-    return false
+    return (election_period(s, d) = during)
 }
 
 entry set_election(e: election_param) {
