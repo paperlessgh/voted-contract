@@ -5,7 +5,7 @@ import { hex2buf } from "@taquito/utils";
 import base58 from "bs58";
 import * as bip39 from 'bip39';
 import { derivePath } from 'ed25519-hd-key';
-import { Parser, packDataBytes, MichelsonData, MichelsonType, } from '@taquito/michel-codec';
+import { Parser, packDataBytes, MichelsonData, MichelsonType, unpackData } from '@taquito/michel-codec';
 import { randomBytes } from 'crypto';
 
 export enum ELECTION_MODE {
@@ -123,6 +123,8 @@ export class SimpleVoteContractClient {
         try {
             const election = await this.getElectionData(electionId);
             const tokenDecode = base58.decode(token);
+            console.log(unpackData(tokenDecode));
+            
             return true;
         } catch (error) {
             console.log(error);
@@ -165,7 +167,7 @@ export class SimpleVoteContractClient {
 
     private async generateRandomBytes(): Promise<string> {
         return new Promise((resolve, reject) => {
-            randomBytes(256, (err, buf) => {
+            randomBytes(16, (err, buf) => {
                 if (err) throw err;
                 resolve(buf.toString('hex'));
             });
@@ -174,11 +176,23 @@ export class SimpleVoteContractClient {
 
     private async generateToken(signer: InMemorySigner): Promise<string | null> {
         try {
-            const bytes = await this.generateRandomBytes();
+            const bytes = await this.generateRandomBytes();            
             const signature = await signer.sign(bytes);
-            const p = new Parser();
-            const dataJSON = p.parseMichelineExpression(`(pair ${bytes} ${signature.prefixSig})`);
-            const typeJSON = p.parseMichelineExpression("(pair bytes signature)");
+            console.log(signature);
+            // const data = `(Pair ${bytes} ${signature.prefixSig})`;
+            // const type = `(pair bytes string)`;
+            // const p = new Parser();
+            // const dataJSON = p.parseMichelineExpression(data);
+            // const typeJSON = p.parseMichelineExpression(type);
+            
+            const dataJSON = {
+                prim: 'Pair',
+                args: [{ bytes: bytes }, { string: signature.prefixSig }],
+            };
+            const typeJSON = {
+                prim: 'pair',
+                args: [{ prim: 'bytes' }, { prim: 'string' }],
+            };
             const pdata = packDataBytes(dataJSON as MichelsonData, typeJSON as MichelsonType);
             return base58.encode(hex2buf(pdata.bytes));
         } catch (error) {
@@ -192,7 +206,7 @@ export class SimpleVoteContractClient {
 
         const seed = bip39.mnemonicToSeedSync(mnemonic).toString('hex');
 
-        const { key, chainCode } = derivePath("path", seed);
+        const { key, chainCode } = derivePath("m/44'/1729'/0'/0'", seed);
 
         return new InMemorySigner(b58cencode(key, prefix[Prefix.EDSK2]));
     }
@@ -202,8 +216,8 @@ export class SimpleVoteContractClient {
     ): Promise<{tokens: (string | null)[], pubKey: string} | null> {
         const signer: InMemorySigner = this.getKeyStore();
         const tokens = await Promise.all(
-            Array(numberOfTokens + 1)
-                .fill(0, 0, numberOfTokens + 1)
+            Array(numberOfTokens)
+                .fill(0, 0, numberOfTokens)
                 .map((e) => this.generateToken(signer))
         );
         const pubKey = await signer.publicKey();
