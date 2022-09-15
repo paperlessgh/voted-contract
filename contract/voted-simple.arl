@@ -230,7 +230,7 @@ entry register_vote(v: vote) {
         do_require(vote_cost_check > 0tz, INSUFFICIENT_AMOUT);
         var e_cand : candidate ?= e.election_candidates[vp.vote_canditate_id] : INVALID_CANDIDATE;
         e_cat.category_votes_count := v_limit;
-        e_cand.candidate_votes_count += vp.number_of_votes;
+        e_cand.candidate_votes_count := e_cand.candidate_votes_count + vp.number_of_votes;
         election.update(v.vote_election_id, {
             election_votes_count += vp.number_of_votes;
             election_categories += [(vp.vote_category_id, e_cat)];
