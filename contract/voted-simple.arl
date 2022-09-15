@@ -191,7 +191,7 @@ function validate_vote(e: asset_value<election>, t: bytes): bool {
 }
 
 entry register_vote(v: vote) {
-    const token: bytes = match v.vote_token with
+    var token: bytes = match v.vote_token with
     | some(t) -> t
     | none -> 0x00
     end;
@@ -238,7 +238,10 @@ entry register_vote(v: vote) {
         });
 
     done;
-
+    token := match election[v.vote_election_id].election_visibility with
+    | private -> token
+    | public -> pack(election[v.vote_election_id].election_votes_count)
+    end;
     election[v.vote_election_id].election_votes.put(token, v.vote_params)
 }
 

@@ -65,16 +65,13 @@ export class SimpleVoteContractClient {
     private contract?: WalletContract;
     private signerSet: boolean = false;
     private contractAddress: string;
-    private electionId: string;
 
     constructor(
         contractAddress: string,
-        electionId: string,
         privateKey: string,
         rpcUrl?: string,
     ) {
         this.contractAddress = contractAddress;
-        this.electionId = electionId;
         this.tezos = new TezosToolkit(rpcUrl ?? 'https://ghostnet.ecadinfra.com');
         this.setSigner(privateKey);
     }
@@ -98,10 +95,10 @@ export class SimpleVoteContractClient {
         }
     }
 
-    private async getElectionData(): Promise<any> {
+    private async getElectionData(electionId: string): Promise<any> {
         await this.setContract();
         const st = (await this.contract?.storage()) as any;
-        const election = await st.election.get(this.electionId);
+        const election = await st.election.get(electionId);
         return election;
     }
 
@@ -120,10 +117,11 @@ export class SimpleVoteContractClient {
     }
 
     async validateToken(
+        electionId: string,
         token: string
     ): Promise<boolean> {
         try {
-            const election = await this.getElectionData();
+            const election = await this.getElectionData(electionId);
             const tokenDecode = base58.decode(token);
             return true;
         } catch (error) {
@@ -147,11 +145,12 @@ export class SimpleVoteContractClient {
     }
 
     async addPubKey(
+        electionId: string,
         pubKey: string
     ): Promise<string | null> {
         try {
             await this.setContract();
-            const op = await this.contract?.methods.set_election([this.electionId, pubKey]).send();
+            const op = await this.contract?.methods.set_election([electionId, pubKey]).send();
             await op?.confirmation();
             return op!.opHash;
         } catch (error) {
@@ -160,8 +159,8 @@ export class SimpleVoteContractClient {
         }
     }
 
-    async getVoteData(): Promise<any> {
-        const election = await this.getElectionData();
+    async getVoteData(electionId: string): Promise<any> {
+        const election = await this.getElectionData(electionId);
     }
 
     private async generateRandomBytes(): Promise<string> {
