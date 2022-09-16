@@ -2,21 +2,21 @@ import { Candidate, Category, Election, ELECTION_MODE, ELECTION_VISIBILITY, Vote
 
 
 const ca1: Category = {
-    category_title: "Favorite Color",
-    category_description: "what is your favorite color",
-    category_vote_limit: 3,
+    title: "Favorite Color",
+    description: "what is your favorite color",
+    vote_limit: 3,
 }
 
 const ca2: Category = {
-    category_title: "Brightest Color",
-    category_description: "What color is brightest to you",
-    category_vote_limit: 3,
+    title: "Brightest Color",
+    description: "What color is brightest to you",
+    vote_limit: 3,
 }
 
 const ca3: Category = {
-    category_title: "Disliked Color",
-    category_description: "what color do you dislike the most",
-    category_vote_limit: 3,
+    title: "Disliked Color",
+    description: "what color do you dislike the most",
+    vote_limit: 3,
 }
 
 const categories: {[key:string]:Category}= {
@@ -26,57 +26,57 @@ const categories: {[key:string]:Category}= {
 };
 
 const cd1: Candidate = {
-    candidate_title: "Red",
-    candidate_description: "color red",
-    candidate_category_id: "1"
+    title: "Red",
+    description: "color red",
+    category_id: "1"
 };
 
 const cd2: Candidate = {
-    candidate_title: "Gold",
-    candidate_description: "color red",
-    candidate_category_id: "1"
+    title: "Gold",
+    description: "color red",
+    category_id: "1"
 };
 
 const cd3: Candidate = {
-    candidate_title: "Red",
-    candidate_description: "color red",
-    candidate_category_id: "1"
+    title: "Red",
+    description: "color red",
+    category_id: "1"
 };
 
 const cd4: Candidate = {
-    candidate_title: "Red",
-    candidate_description: "color red",
-    candidate_category_id: "2"
+    title: "Red",
+    description: "color red",
+    category_id: "2"
 };
 
 const cd5: Candidate = {
-    candidate_title: "Gold",
-    candidate_description: "color red",
-    candidate_category_id: "2"
+    title: "Gold",
+    description: "color red",
+    category_id: "2"
 };
 
 const cd6: Candidate = {
-    candidate_title: "Red",
-    candidate_description: "color red",
-    candidate_category_id: "2"
+    title: "Red",
+    description: "color red",
+    category_id: "2"
 };
 
 const cd7: Candidate = {
-    candidate_title: "Red",
-    candidate_description: "color red",
-    candidate_category_id: "3"
+    title: "Red",
+    description: "color red",
+    category_id: "3"
 };
 
 const cd8: Candidate = {
-    candidate_title: "Gold",
-    candidate_description: "color red",
-    candidate_category_id: "3"
+    title: "Gold",
+    description: "color red",
+    category_id: "3"
 };
 
 const cd9: Candidate = {
-    candidate_title: "Red",
-    candidate_description: "color red",
-    candidate_category_id: "3"
+    title: "Red",
+    description: "color red",
+    category_id: "3"
 };
 
 // cadidate key is generated with `${categoryId}${candidateId}`
@@ -101,19 +101,19 @@ end.setDate(end.getDate() + 8);
 const end_value = Math.floor(end.getTime() / 1000).toString()
 
 export const electionData: Election =  {
-    election_id_param: "simple-voting",
-    election_organizer_param: "tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb",
-    election_title_param: "Paperless Voting",
-    election_description_param: "Simple Paperless Voting",
-    election_start_time_param: start_value,
-    election_stop_time_param: end_value,
-    election_pub_keys_param: [],
-    election_mode_param: ELECTION_MODE.free,
-    election_active_param: true,
-    election_cost_per_vote_param: 0,
-    election_visibility_param: ELECTION_VISIBILITY.private,
-    election_categories_param: categories,
-    election_candidates_param: candidates,
+    id: "simple-voting",
+    organizer: "tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb",
+    titlle: "Paperless Voting",
+    description: "Simple Paperless Voting",
+    start_time: start_value,
+    stop_time: end_value,
+    pub_keys: [],
+    mode: ELECTION_MODE.free,
+    active: true,
+    cost_per_vote: 0,
+    visibility: ELECTION_VISIBILITY.private,
+    categories: categories,
+    candidates: candidates,
 };
 
 
@@ -137,7 +137,7 @@ const vp3: VoteParam =  {
 }
 
 export const v1: Vote = {
-    vote_election_id: electionData.election_id_param,
+    vote_election_id: electionData.id,
     vote_params: [vp1, vp2, vp3],
     vote_token: null,
 }

@@ -19,15 +19,15 @@ export enum ELECTION_VISIBILITY {
 }
 
 export interface Category {
-    category_title: string;
-    category_description: string;
-    category_vote_limit: number;
+    title: string;
+    description: string;
+    vote_limit: number;
 }
 
 export interface Candidate {
-    candidate_title: string;
-    candidate_description: string;
-    candidate_category_id: string;
+    title: string;
+    description: string;
+    category_id: string;
 }
 
 export interface VoteParam {
@@ -43,19 +43,19 @@ export interface Vote {
 }
 
 export interface Election {
-    election_id_param: string;
-    election_organizer_param: string;
-    election_title_param: string;
-    election_description_param: string;
-    election_start_time_param: string; //  microseconds
-    election_stop_time_param: string; // microseconds
-    election_pub_keys_param: string[];
-    election_mode_param: ELECTION_MODE;
-    election_active_param: boolean;
-    election_cost_per_vote_param: number;
-    election_visibility_param: ELECTION_VISIBILITY;
-    election_categories_param: { [key: string]: Category };
-    election_candidates_param: { [key: string]: Candidate };
+    id: string;
+    organizer: string;
+    titlle: string;
+    description: string;
+    start_time: string; //  microseconds
+    stop_time: string; // microseconds
+    pub_keys: string[];
+    mode: ELECTION_MODE;
+    active: boolean;
+    cost_per_vote: number;
+    visibility: ELECTION_VISIBILITY;
+    categories: { [key: string]: Category };
+    candidates: { [key: string]: Candidate };
 }
 
 function isType<T>(obj: any, prop: string): obj is T {
@@ -64,38 +64,21 @@ function isType<T>(obj: any, prop: string): obj is T {
 
 function buildElection(election: Election): any[] {
     return [
-        election.election_id_param,
-        election.election_organizer_param,
-        election.election_title_param,
-        election.election_description_param,
-        election.election_start_time_param, // iso string
-        election.election_stop_time_param, // iso string
-        election.election_pub_keys_param,
-        election.election_mode_param,
-        election.election_active_param,
-        election.election_cost_per_vote_param,
-        election.election_visibility_param,
-        buildMap(election.election_categories_param),
-        buildMap(election.election_candidates_param),
+        election.id,
+        election.organizer,
+        election.titlle,
+        election.description,
+        election.start_time, // microseconds
+        election.stop_time, // microseconds
+        election.pub_keys,
+        election.mode,
+        election.active,
+        election.cost_per_vote,
+        election.visibility,
+        buildMap(election.categories),
+        buildMap(election.candidates),
     ];
 };
-
-function buildCandidate(candidate: Candidate): any[] {
-    return [
-        candidate.candidate_title,
-        candidate.candidate_description,
-        candidate.candidate_category_id
-    ];
-
-}
-
-function buildCategory(category: Category): any[] {
-    return [
-        category.category_title,
-        category.category_description,
-        category.category_vote_limit
-    ]
-}
 
 function buildVote(vote: Vote): any[] {
     return [
@@ -211,9 +194,7 @@ export class SimpleVoteContractClient {
             const unpkaced = unpackData(tokenDecode) as any;
             const data = unpkaced["args"][0]["bytes"];
             const signature = unpkaced["args"][1]["string"];
-            const pubKeys: string[] = election.election_pub_keys;
-            console.log(election, pubKeys);
-            
+            const pubKeys: string[] = election.election_pub_keys;            
             for (const pubk of pubKeys) {
                 if (verifySignature(data, pubk, signature)) return true;
             }

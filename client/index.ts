@@ -8,10 +8,10 @@ import { SimpleVoteContractClient} from "./voted-client";
 
     const sv: SimpleVoteContractClient = new SimpleVoteContractClient(contractAddress, organizerPrivateKey);
 
-    const electionExists = await sv.electionExists(electionData.election_id_param);
+    const electionExists = await sv.electionExists(electionData.id);
     if (!electionExists) {
         const electionCreated = await sv.createElection(electionData);
-        console.log(electionCreated);
+        console.log('electionCreated', electionCreated);
     }
 
     const generated = await sv.generateTokens(1);
@@ -33,7 +33,12 @@ import { SimpleVoteContractClient} from "./voted-client";
         return;
     }
 
-    let tokenValid = await sv.validateToken(electionData.election_id_param, generated.tokens[0]);
+    electionData.pub_keys = [generated.pubKey];
+
+    const updatedElection = await sv.updateElection(electionData);
+    console.log('updatedElection', updatedElection);
+
+    let tokenValid = await sv.validateToken(electionData.id, generated.tokens[0]);
 
     if (tokenValid) {
         console.log(`Token is not supposed to be valid ${tokenValid} ...`);
@@ -41,14 +46,14 @@ import { SimpleVoteContractClient} from "./voted-client";
         console.log(`Tokens are useless now, they should be added to the smart contract ...`);
     }
 
-    const addedPubkey = await sv.addPubKey(electionData.election_id_param, generated.pubKey);
+    const addedPubkey = await sv.addPubKey(electionData.id, generated.pubKey);
 
     if (addedPubkey == null) {
         console.log(`Could not add pubkeys ${addedPubkey}`);
         return;
     }
 
-    tokenValid = await sv.validateToken(electionData.election_id_param, generated.tokens[0]);
+    tokenValid = await sv.validateToken(electionData.id, generated.tokens[0]);
 
     if (!tokenValid) {
         console.log(`Token is supposed to be valid ${tokenValid} ...`);
