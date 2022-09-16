@@ -1,21 +1,21 @@
 import { InMemorySigner } from "@taquito/signer";
-import { TezosToolkit, WalletContract } from "@taquito/taquito";
-import { b58cencode, Prefix, prefix } from '@taquito/utils';
+import { MichelsonMap, TezosToolkit, WalletContract } from "@taquito/taquito";
+import { b58cencode, Prefix, prefix, verifySignature } from '@taquito/utils';
 import { hex2buf } from "@taquito/utils";
 import base58 from "bs58";
 import * as bip39 from 'bip39';
 import { derivePath } from 'ed25519-hd-key';
-import { Parser, packDataBytes, MichelsonData, MichelsonType, unpackData } from '@taquito/michel-codec';
+import { packDataBytes, MichelsonData, MichelsonType, unpackData } from '@taquito/michel-codec';
 import { randomBytes } from 'crypto';
 
 export enum ELECTION_MODE {
-    free,
-    paid
+    free = 0,
+    paid = 1
 }
 
 export enum ELECTION_VISIBILITY {
-    public,
-    private
+    public = 0,
+    private = 1
 }
 
 export interface Category {
@@ -47,15 +47,79 @@ export interface Election {
     election_organizer_param: string;
     election_title_param: string;
     election_description_param: string;
-    election_start_time_param: Date;
-    election_stop_time_param: Date;
+    election_start_time_param: string; //  microseconds
+    election_stop_time_param: string; // microseconds
     election_pub_keys_param: string[];
     election_mode_param: ELECTION_MODE;
     election_active_param: boolean;
     election_cost_per_vote_param: number;
     election_visibility_param: ELECTION_VISIBILITY;
-    election_categories_param: Map<string, Category>;
-    election_candidates_param: Map<string, Candidate>;
+    election_categories_param: { [key: string]: Category };
+    election_candidates_param: { [key: string]: Candidate };
+}
+
+function isType<T>(obj: any, prop: string): obj is T {
+    return obj[prop] !== undefined;
+}
+
+function buildElection(election: Election): any[] {
+    return [
+        election.election_id_param,
+        election.election_organizer_param,
+        election.election_title_param,
+        election.election_description_param,
+        election.election_start_time_param, // iso string
+        election.election_stop_time_param, // iso string
+        election.election_pub_keys_param,
+        election.election_mode_param,
+        election.election_active_param,
+        election.election_cost_per_vote_param,
+        election.election_visibility_param,
+        buildMap(election.election_categories_param),
+        buildMap(election.election_candidates_param),
+    ];
+};
+
+function buildCandidate(candidate: Candidate): any[] {
+    return [
+        candidate.candidate_title,
+        candidate.candidate_description,
+        candidate.candidate_category_id
+    ];
+
+}
+
+function buildCategory(category: Category): any[] {
+    return [
+        category.category_title,
+        category.category_description,
+        category.category_vote_limit
+    ]
+}
+
+function buildVote(vote: Vote): any[] {
+    return [
+        vote.vote_election_id,
+        vote.vote_params,
+        vote.vote_token
+    ];
+}
+
+function buildVoteParam(voteParam: VoteParam): any[] {
+    return [
+        voteParam.vote_canditate_id,
+        voteParam.vote_category_id,
+        voteParam.number_of_votes
+    ];
+
+}
+
+function buildMap(mapargs: { [key: string]: any }): MichelsonMap<string, any[]> {
+    const fresh_map: MichelsonMap<string, any[]> = new MichelsonMap();
+    for (const [k, v] of Object.entries(mapargs)) {
+        fresh_map.set(k, v);
+    }
+    return fresh_map;
 }
 
 
@@ -102,17 +166,38 @@ export class SimpleVoteContractClient {
         return election;
     }
 
-    async setElection(
+    async electionExists(electionId: string): Promise<boolean> {
+        const election = await this.getElectionData(electionId);        
+        return election != undefined;
+    }
+
+    async createElection(
         electionDetails: Election
-    ): Promise<string | null> {
+    ): Promise<string | undefined> {
         try {
             await this.setContract();
-            const op = await this.contract?.methods.set_election(electionDetails).send();
+            const electionData = buildElection(electionDetails);
+            const op = await this.contract?.methods.create_election(...electionData).send();
             await op?.confirmation();
-            return op!.opHash;
+            return op?.opHash;
         } catch (error) {
             console.log(error);
-            return null;
+            return undefined;
+        }
+    }
+
+    async updateElection(
+        electionDetails: Election
+    ): Promise<string | undefined> {
+        try {
+            await this.setContract();
+            const electionData = buildElection(electionDetails);
+            const op =  await this.contract?.methods.update_election(...electionData).send();
+            await op?.confirmation();
+            return op?.opHash;
+        } catch (error) {
+            console.log(error);
+            return undefined;
         }
     }
 
@@ -123,9 +208,16 @@ export class SimpleVoteContractClient {
         try {
             const election = await this.getElectionData(electionId);
             const tokenDecode = base58.decode(token);
-            console.log(unpackData(tokenDecode));
+            const unpkaced = unpackData(tokenDecode) as any;
+            const data = unpkaced["args"][0]["bytes"];
+            const signature = unpkaced["args"][1]["string"];
+            const pubKeys: string[] = election.election_pub_keys;
+            console.log(election, pubKeys);
             
-            return true;
+            for (const pubk of pubKeys) {
+                if (verifySignature(data, pubk, signature)) return true;
+            }
+            return false;
         } catch (error) {
             console.log(error);
             return false;
@@ -137,7 +229,8 @@ export class SimpleVoteContractClient {
     ): Promise<string | null> {
         try {
             await this.setContract();
-            const op = await this.contract?.methods.register_vote(voteDetails).send();
+            const op = await this.contract?.methods
+            .register_vote(...buildVote(voteDetails)).send();
             await op?.confirmation();
             return op!.opHash;
         } catch (error) {
@@ -152,7 +245,10 @@ export class SimpleVoteContractClient {
     ): Promise<string | null> {
         try {
             await this.setContract();
-            const op = await this.contract?.methods.set_election([electionId, pubKey]).send();
+            const prams = this.contract?.methods.add_pub_key(electionId, pubKey).toTransferParams();
+            console.log(JSON.stringify(prams, null, 2));
+            
+            const op = await this.contract?.methods.add_pub_key(electionId, pubKey).send();
             await op?.confirmation();
             return op!.opHash;
         } catch (error) {
@@ -163,11 +259,12 @@ export class SimpleVoteContractClient {
 
     async getVoteData(electionId: string): Promise<any> {
         const election = await this.getElectionData(electionId);
+        return election;
     }
 
     private async generateRandomBytes(): Promise<string> {
         return new Promise((resolve, reject) => {
-            randomBytes(16, (err, buf) => {
+            randomBytes(4, (err, buf) => {
                 if (err) throw err;
                 resolve(buf.toString('hex'));
             });
@@ -176,15 +273,8 @@ export class SimpleVoteContractClient {
 
     private async generateToken(signer: InMemorySigner): Promise<string | null> {
         try {
-            const bytes = await this.generateRandomBytes();            
+            const bytes = await this.generateRandomBytes();
             const signature = await signer.sign(bytes);
-            console.log(signature);
-            // const data = `(Pair ${bytes} ${signature.prefixSig})`;
-            // const type = `(pair bytes string)`;
-            // const p = new Parser();
-            // const dataJSON = p.parseMichelineExpression(data);
-            // const typeJSON = p.parseMichelineExpression(type);
-            
             const dataJSON = {
                 prim: 'Pair',
                 args: [{ bytes: bytes }, { string: signature.prefixSig }],
@@ -213,7 +303,7 @@ export class SimpleVoteContractClient {
 
     async generateTokens(
         numberOfTokens: number
-    ): Promise<{tokens: (string | null)[], pubKey: string} | null> {
+    ): Promise<{ tokens: (string | null)[], pubKey: string } | null> {
         const signer: InMemorySigner = this.getKeyStore();
         const tokens = await Promise.all(
             Array(numberOfTokens)
@@ -221,7 +311,8 @@ export class SimpleVoteContractClient {
                 .map((e) => this.generateToken(signer))
         );
         const pubKey = await signer.publicKey();
-        return {tokens, pubKey};
+        
+        return { tokens, pubKey };
     }
 
 }

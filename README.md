@@ -84,7 +84,7 @@ How do we finally count the results of the voting.
 - There should now be a smart contract service which will provide all the smart contract related functionalities.
 
 ```typescript
-class SmartContractService {
+class SimpleVoteContractClient {
 
   registerElection(smartContractAddress, electionId, electionDetails)
 

@@ -7,6 +7,7 @@ constant INVALID_CATEGORY: string = "CATEGORY DOES NOT EXIST"
 constant INVALID_CANDIDATE: string = "CANDIDATE DOES NOT EXIST"
 constant INVALID_CALLER: string = "CALLER IS UNAUTHORIZED"
 constant INVALID_ELECTION: string = "ELECTION DOES NOT EXIST"
+constant ELECTION_EXISTS: string = "ELECTION ALREADY EXISTS"
 constant INVALID_PUB_KEY: string = "PUB KEY ALREADY EXISTS FOR ELECTION"
 constant INVALID_PERIOD: string = "CANNOT INVOKE THIS FUNCTIONALITY AT THIS TIME"
 constant INVALID_TOKEN: string = "INVALID TOKEN"
@@ -27,14 +28,14 @@ record category {
     category_title: string;
     category_description: string;
     category_vote_limit: nat = 1;
-    category_votes_count: nat = 0;
+    category_votes_count: option<nat> = some(0);
 }
 
 record candidate {
     candidate_title: string;
     candidate_description: string;
     candidate_category_id: string;
-    candidate_votes_count: nat = 0;
+    candidate_votes_count: option<nat> = some(0);
 }
 
 record vote_param {
@@ -112,53 +113,53 @@ function is_during_election(s: date, d: date): bool {
     return (election_period(s, d) = during)
 }
 
-entry set_election(e: election_param) {
+entry create_election(e: election_param) {
+    do_require(not election.contains(e.election_id_param), ELECTION_EXISTS);
     const params_valid = validate_election(e);
-    if not election.contains(e.election_id_param) then begin
-        // create new election
-        election.add({
-            election_id = e.election_id_param ;
-            election_organizer = e.election_organizer_param;
-            election_title = e.election_title_param;
-            election_description = e. election_description_param;
-            election_start_time = e.election_start_time_param;
-            election_stop_time = e.election_stop_time_param;
-            election_pub_keys = e.election_pub_keys_param;
-            election_mode = e.election_mode_param;
-            election_active = e.election_active_param;
-            election_cost_per_vote = e.election_cost_per_vote_param;
-            election_visibility = e.election_visibility_param;
-            election_categories  = e.election_categories_param;
-            election_candidates  = e.election_candidates_param
-        })
-    end else begin
-        // update existing election
-        do_require(caller = election[e.election_id_param].election_organizer, INVALID_CALLER);
-        do_require(
-            is_pre_election(
-                election[e.election_id_param].election_start_time,
-                election[e.election_id_param].election_stop_time
-            ),
-            INVALID_PERIOD
-        );
-        election.add({
-            election_id = e.election_id_param ;
-            election_organizer = e.election_organizer_param;
-            election_title = e.election_title_param;
-            election_description = e. election_description_param;
-            election_start_time = e.election_start_time_param;
-            election_stop_time = e.election_stop_time_param;
-            election_pub_keys = e.election_pub_keys_param;
-            election_mode = e.election_mode_param;
-            election_active = e.election_active_param;
-            election_cost_per_vote = e.election_cost_per_vote_param;
-            election_visibility = e.election_visibility_param;
-            election_categories  = e.election_categories_param;
-            election_candidates  = e.election_candidates_param
-        })
-    end
-    
+    election.add({
+        election_id = e.election_id_param ;
+        election_organizer = e.election_organizer_param;
+        election_title = e.election_title_param;
+        election_description = e. election_description_param;
+        election_start_time = e.election_start_time_param;
+        election_stop_time = e.election_stop_time_param;
+        election_pub_keys = e.election_pub_keys_param;
+        election_mode = e.election_mode_param;
+        election_active = e.election_active_param;
+        election_cost_per_vote = e.election_cost_per_vote_param;
+        election_visibility = e.election_visibility_param;
+        election_categories  = e.election_categories_param;
+        election_candidates  = e.election_candidates_param
+    })
 }
+
+entry update_election(e: election_param) {
+    do_require(election.contains(e.election_id_param), INVALID_ELECTION);
+    const params_valid = validate_election(e);
+    do_require(caller = election[e.election_id_param].election_organizer, INVALID_CALLER);
+    do_require(
+        is_pre_election(
+            election[e.election_id_param].election_start_time,
+            election[e.election_id_param].election_stop_time
+        ),
+        INVALID_PERIOD
+    );
+    election.add({
+        election_id = e.election_id_param ;
+        election_organizer = e.election_organizer_param;
+        election_title = e.election_title_param;
+        election_description = e. election_description_param;
+        election_start_time = e.election_start_time_param;
+        election_stop_time = e.election_stop_time_param;
+        election_pub_keys = e.election_pub_keys_param;
+        election_mode = e.election_mode_param;
+        election_active = e.election_active_param;
+        election_cost_per_vote = e.election_cost_per_vote_param;
+        election_visibility = e.election_visibility_param;
+        election_categories  = e.election_categories_param;
+        election_candidates  = e.election_candidates_param
+    })
+} 
 
 entry add_pub_key(e_id: string, pub_key: key) {
     require {
@@ -229,8 +230,12 @@ entry register_vote(v: vote) {
         );
         do_require(vote_cost_check > 0tz, INSUFFICIENT_AMOUT);
         var e_cand : candidate ?= e.election_candidates[vp.vote_canditate_id] : INVALID_CANDIDATE;
-        e_cat.category_votes_count := v_limit;
-        e_cand.candidate_votes_count := e_cand.candidate_votes_count + vp.number_of_votes;
+        e_cat.category_votes_count := some(v_limit);
+        var e_cand_votes_count : nat = match e_cand.candidate_votes_count with
+        | some(vc) -> vc + vp.number_of_votes
+        | none -> 0 + vp.number_of_votes
+        end;
+        e_cand.candidate_votes_count := some(e_cand_votes_count);
         election.update(v.vote_election_id, {
             election_votes_count += vp.number_of_votes;
             election_categories += [(vp.vote_category_id, e_cat)];
