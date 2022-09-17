@@ -1,7 +1,7 @@
 import { InMemorySigner } from "@taquito/signer";
 import { MichelsonMap, TezosToolkit, WalletContract } from "@taquito/taquito";
 import { b58cencode, Prefix, prefix, verifySignature } from '@taquito/utils';
-import { hex2buf } from "@taquito/utils";
+import { hex2buf, buf2hex } from "@taquito/utils";
 import base58 from "bs58";
 import * as bip39 from 'bip39';
 import { derivePath } from 'ed25519-hd-key';
@@ -56,7 +56,6 @@ export interface Election {
     stop_time: string; // microseconds
     pub_keys: string[];
     mode: ELECTION_MODE;
-    active: boolean;
     cost_per_vote: number;
     visibility: ELECTION_VISIBILITY;
     categories: { [key: string]: Category };
@@ -77,7 +76,6 @@ function buildElection(election: Election): any[] {
         election.stop_time, // microseconds
         election.pub_keys,
         election.mode,
-        election.active,
         election.cost_per_vote,
         election.visibility,
         buildMap(election.categories),
@@ -88,7 +86,7 @@ function buildElection(election: Election): any[] {
 function buildVote(vote: Vote): any[] {
     return [
         vote.election_id,
-        vote.vote_params,
+        vote.vote_params.map(v => buildVoteParam(v)),
         vote.token
     ];
 }
@@ -105,12 +103,14 @@ function buildVoteParam(voteParam: VoteParam): any[] {
 function buildMap(mapargs: { [key: string]: any }): MichelsonMap<string, any[]> {
     const fresh_map: MichelsonMap<string, any> = new MichelsonMap();
     for (const [k, v] of Object.entries(mapargs)) {
-        fresh_map.set(k, parseIdea(v));
+        if (isType<Idea>(v, "title")) {
+            fresh_map.set(k, buildIdea(v));
+        }
     }
     return fresh_map;
 }
 
-function  strCut(str: string, maxLen: number) {
+function strCut(str: string, maxLen: number) {
     if (str.length > maxLen) {
         return str.slice(0, maxLen) + "..."
     } else {
@@ -122,6 +122,28 @@ function parseIdea(idea: Idea) {
     idea.title = strCut(idea.title, 140);
     idea.description = strCut(idea.description, 140);
     return idea;
+}
+
+function buildIdea(idea: Idea): { [key: string]: any } {
+    const obj = parseIdea(idea);
+    let newObj: { [key: string]: any } = obj;
+    if (isType<Candidate>(obj, "category_id")) {
+        newObj = {
+            candidate_title: obj.title,
+            candidate_description: obj.description,
+            candidate_category_id: obj.category_id,
+        }
+    }
+
+    if (isType<Category>(obj, "vote_limit")) {
+        newObj = {
+            category_title: obj.title,
+            category_description: obj.description,
+            category_vote_limit: obj.vote_limit,
+        }
+    }
+
+    return newObj;
 }
 
 
@@ -213,9 +235,6 @@ export class SimpleVoteContractClient {
     ): Promise<string | null> {
         try {
             await this.setContract();
-            const prams = this.contract?.methods.add_pub_key(electionId, pubKey).toTransferParams();
-            console.log(JSON.stringify(prams, null, 2));
-
             const op = await this.contract?.methods.add_pub_key(electionId, pubKey).send();
             await op?.confirmation();
             return op!.opHash;
@@ -246,12 +265,20 @@ export class SimpleVoteContractClient {
     }
 
     async recordVote(
-        voteDetails: Vote
+        voteDetails: Vote,
+        amount: number = 0
     ): Promise<string | null> {
         try {
             await this.setContract();
+            voteDetails.token = voteDetails.token == null ?
+                voteDetails.token : buf2hex(base58.decode(voteDetails.token) as Buffer);
+            const voteData = buildVote(voteDetails);
+            const prams = this.contract?.methods.register_vote(...voteData).toTransferParams({amount});
+            console.log(JSON.stringify(prams, null, 2));
+            
             const op = await this.contract?.methods
-                .register_vote(...buildVote(voteDetails)).send();
+                .register_vote(...voteData)
+                .send({ amount });
             await op?.confirmation();
             return op!.opHash;
         } catch (error) {

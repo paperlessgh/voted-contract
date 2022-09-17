@@ -108,7 +108,6 @@ export const electionData: Election =  {
     stop_time: end_value,
     pub_keys: [],
     mode: ELECTION_MODE.free,
-    active: true,
     cost_per_vote: 0,
     visibility: ELECTION_VISIBILITY.private,
     categories: categories,

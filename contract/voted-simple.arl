@@ -189,11 +189,11 @@ function validate_token(epubs: set<key>, token: bytes): bool {
     return is_token_valid
 }
 
-function validate_vote(e: asset_value<election_metadata>, t: bytes): bool {
+function validate_vote(k : asset_key<election_metadata>, e: asset_value<election_metadata>, t: bytes): bool {
     do_require(is_during_election(e.election_start_time, e.election_stop_time), INVALID_PERIOD);
     if e.election_visibility = private then begin
         do_require(validate_token(e.election_pub_keys, t), INVALID_TOKEN);
-        do_fail_if(contains(election_votes[e.election_id].votes, t), INVALID_TOKEN_USED)
+        do_fail_if(contains(election_votes[k].votes, t), INVALID_TOKEN_USED)
     end;
     return true
 }
@@ -204,8 +204,9 @@ entry register_vote(v: vote) {
     | none -> 0x00
     end;
     var e: asset_value<election_metadata> = [];
-    match election_metadata[v.vote_election_id] with
-    | some(ve) -> if validate_vote(ve, token) then e := ve else fail(INVALID_VOTE)
+    const k = v.vote_election_id;
+    match election_metadata[k] with
+    | some(ve) -> if validate_vote(k, ve, token) then e := ve else fail(INVALID_VOTE)
     | none -> fail(INVALID_ELECTION) 
     end;
     var vote_limit_check: map<string, nat> = [];
