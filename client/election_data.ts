@@ -79,17 +79,16 @@ const cd9: Candidate = {
     category_id: "3"
 };
 
-// cadidate key is generated with `${categoryId}${candidateId}`
 const candidates: {[key:string]: Candidate} = {
-    "11": cd1,
-    "12": cd2,
-    "13": cd3,
-    "21": cd4,
-    "22": cd5,
-    "23": cd6,
-    "31": cd7,
-    "32": cd8,
-    "33": cd9
+    "a": cd1,
+    "b": cd2,
+    "c": cd3,
+    "d": cd4,
+    "e": cd5,
+    "f": cd6,
+    "g": cd7,
+    "h": cd8,
+    "i": cd9
 };
 
 const start = new Date();
@@ -101,7 +100,7 @@ end.setDate(end.getDate() + 8);
 const end_value = Math.floor(end.getTime() / 1000).toString()
 
 export const electionData: Election =  {
-    id: "simple-voting",
+    id: "simply-voted",
     organizer: "",
     titlle: "Paperless Voting",
     description: "Simple Paperless Voting",
@@ -119,25 +118,25 @@ export const electionData: Election =  {
 
 //// ================== correct vote ========================
 const vp1: VoteParam =  {
-    vote_canditate_id: "11",
-    vote_category_id: "1",
+    canditate_id: "a",
+    category_id: "1",
     number_of_votes: 1
 }
 
 const vp2: VoteParam =  {
-    vote_canditate_id: "21",
-    vote_category_id: "2",
+    canditate_id: "b",
+    category_id: "2",
     number_of_votes: 1
 }
 
 const vp3: VoteParam =  {
-    vote_canditate_id: "21",
-    vote_category_id: "3",
+    canditate_id: "c",
+    category_id: "3",
     number_of_votes: 1
 }
 
 export const v1: Vote = {
-    vote_election_id: electionData.id,
+    election_id: electionData.id,
     vote_params: [vp1, vp2, vp3],
-    vote_token: null,
+    token: null,
 }

@@ -36,15 +36,15 @@ export interface Candidate {
 }
 
 export interface VoteParam {
-    vote_canditate_id: string;
-    vote_category_id: string;
+    canditate_id: string;
+    category_id: string;
     number_of_votes: number;
 }
 
 export interface Vote {
-    vote_election_id: string;
+    election_id: string;
     vote_params: VoteParam[];
-    vote_token: string | null;
+    token: string | null;
 }
 
 export interface Election {
@@ -87,16 +87,16 @@ function buildElection(election: Election): any[] {
 
 function buildVote(vote: Vote): any[] {
     return [
-        vote.vote_election_id,
+        vote.election_id,
         vote.vote_params,
-        vote.vote_token
+        vote.token
     ];
 }
 
 function buildVoteParam(voteParam: VoteParam): any[] {
     return [
-        voteParam.vote_canditate_id,
-        voteParam.vote_category_id,
+        voteParam.canditate_id,
+        voteParam.category_id,
         voteParam.number_of_votes
     ];
 
