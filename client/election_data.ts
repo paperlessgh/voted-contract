@@ -102,7 +102,7 @@ const end_value = Math.floor(end.getTime() / 1000).toString()
 
 export const electionData: Election =  {
     id: "simple-voting",
-    organizer: "tz1VSUr8wwNhLAzempoch5d6hLRiTh8Cjcjb",
+    organizer: "",
     titlle: "Paperless Voting",
     description: "Simple Paperless Voting",
     start_time: start_value,

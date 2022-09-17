@@ -18,6 +18,11 @@ export enum ELECTION_VISIBILITY {
     private = 1
 }
 
+interface Idea {
+    title: string,
+    description: string,
+}
+
 export interface Category {
     title: string;
     description: string;
@@ -66,8 +71,8 @@ function buildElection(election: Election): any[] {
     return [
         election.id,
         election.organizer,
-        election.titlle,
-        election.description,
+        strCut(election.titlle, 30),
+        strCut(election.description, 140),
         election.start_time, // microseconds
         election.stop_time, // microseconds
         election.pub_keys,
@@ -98,11 +103,25 @@ function buildVoteParam(voteParam: VoteParam): any[] {
 }
 
 function buildMap(mapargs: { [key: string]: any }): MichelsonMap<string, any[]> {
-    const fresh_map: MichelsonMap<string, any[]> = new MichelsonMap();
+    const fresh_map: MichelsonMap<string, any> = new MichelsonMap();
     for (const [k, v] of Object.entries(mapargs)) {
-        fresh_map.set(k, v);
+        fresh_map.set(k, parseIdea(v));
     }
     return fresh_map;
+}
+
+function  strCut(str: string, maxLen: number) {
+    if (str.length > maxLen) {
+        return str.slice(0, maxLen) + "..."
+    } else {
+        return str;
+    }
+}
+
+function parseIdea(idea: Idea) {
+    idea.title = strCut(idea.title, 140);
+    idea.description = strCut(idea.description, 140);
+    return idea;
 }
 
 
@@ -120,10 +139,6 @@ export class SimpleVoteContractClient {
     ) {
         this.contractAddress = contractAddress;
         this.tezos = new TezosToolkit(rpcUrl ?? 'https://ghostnet.ecadinfra.com');
-        this.setSigner(privateKey);
-    }
-
-    setPrivateKey(privateKey: string) {
         this.setSigner(privateKey);
     }
 
@@ -145,43 +160,56 @@ export class SimpleVoteContractClient {
     private async getElectionData(electionId: string): Promise<any> {
         await this.setContract();
         const st = (await this.contract?.storage()) as any;
-        const election = await st.election.get(electionId);
+        const election = await st.election_metadata.get(electionId);
         return election;
     }
 
     async electionExists(electionId: string): Promise<boolean> {
-        const election = await this.getElectionData(electionId);        
+        const election = await this.getElectionData(electionId);
         return election != undefined;
+    }
+
+    private async prepareElectionData(
+        electionDetails: Election
+    ): Promise<any[]> {
+        await this.setContract();
+        electionDetails.organizer = await this.tezos?.signer.publicKeyHash();
+        return buildElection(electionDetails);
+    }
+
+    private async setElection(
+        electionDetails: Election,
+        method: "update" | "create"
+    ): Promise<string | undefined> {
+        try {
+            const electionData = await this.prepareElectionData(electionDetails);
+            let op;
+            switch (method) {
+                case "update":
+                    op = await this.contract?.methods.update_election(...electionData).send();
+                    break;
+                case "create":
+                    op = await this.contract?.methods.create_election(...electionData).send();
+                    break;
+            }
+            await op?.confirmation();
+            return op?.opHash;
+        } catch (error) {
+            console.log(error);
+            return undefined;
+        }
     }
 
     async createElection(
         electionDetails: Election
     ): Promise<string | undefined> {
-        try {
-            await this.setContract();
-            const electionData = buildElection(electionDetails);
-            const op = await this.contract?.methods.create_election(...electionData).send();
-            await op?.confirmation();
-            return op?.opHash;
-        } catch (error) {
-            console.log(error);
-            return undefined;
-        }
+        return (await this.setElection(electionDetails, "create"))
     }
 
     async updateElection(
         electionDetails: Election
     ): Promise<string | undefined> {
-        try {
-            await this.setContract();
-            const electionData = buildElection(electionDetails);
-            const op =  await this.contract?.methods.update_election(...electionData).send();
-            await op?.confirmation();
-            return op?.opHash;
-        } catch (error) {
-            console.log(error);
-            return undefined;
-        }
+        return (await this.setElection(electionDetails, "update"))
     }
 
     async validateToken(
@@ -194,7 +222,7 @@ export class SimpleVoteContractClient {
             const unpkaced = unpackData(tokenDecode) as any;
             const data = unpkaced["args"][0]["bytes"];
             const signature = unpkaced["args"][1]["string"];
-            const pubKeys: string[] = election.election_pub_keys;            
+            const pubKeys: string[] = election.election_pub_keys;
             for (const pubk of pubKeys) {
                 if (verifySignature(data, pubk, signature)) return true;
             }
@@ -211,7 +239,7 @@ export class SimpleVoteContractClient {
         try {
             await this.setContract();
             const op = await this.contract?.methods
-            .register_vote(...buildVote(voteDetails)).send();
+                .register_vote(...buildVote(voteDetails)).send();
             await op?.confirmation();
             return op!.opHash;
         } catch (error) {
@@ -220,7 +248,7 @@ export class SimpleVoteContractClient {
         }
     }
 
-    async addPubKey(
+    private async addPubKey(
         electionId: string,
         pubKey: string
     ): Promise<string | null> {
@@ -228,7 +256,7 @@ export class SimpleVoteContractClient {
             await this.setContract();
             const prams = this.contract?.methods.add_pub_key(electionId, pubKey).toTransferParams();
             console.log(JSON.stringify(prams, null, 2));
-            
+
             const op = await this.contract?.methods.add_pub_key(electionId, pubKey).send();
             await op?.confirmation();
             return op!.opHash;
@@ -283,8 +311,11 @@ export class SimpleVoteContractClient {
     }
 
     async generateTokens(
+        electionId: string,
         numberOfTokens: number
-    ): Promise<{ tokens: (string | null)[], pubKey: string } | null> {
+    ): Promise<(string | null)[] | null> {
+        const electionExists = await this.electionExists(electionId);
+        if (!electionExists) return null;
         const signer: InMemorySigner = this.getKeyStore();
         const tokens = await Promise.all(
             Array(numberOfTokens)
@@ -292,8 +323,9 @@ export class SimpleVoteContractClient {
                 .map((e) => this.generateToken(signer))
         );
         const pubKey = await signer.publicKey();
-        
-        return { tokens, pubKey };
+        const pubKeyAdded = await this.addPubKey(electionId, pubKey);
+        if (pubKeyAdded == null) return null;
+        return tokens;
     }
 
 }

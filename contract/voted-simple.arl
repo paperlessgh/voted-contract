@@ -66,7 +66,7 @@ record election_param {
     election_candidates_param: map<string, candidate>;
 }
 
-asset election identified by election_id to big_map {
+asset election_metadata identified by election_id to big_map {
     election_id : string;
     election_organizer: address;
     election_title: string;
@@ -78,10 +78,14 @@ asset election identified by election_id to big_map {
     election_active: bool = true;
     election_cost_per_vote: tez = 0tz;
     election_visibility: ELECTION_VISIBILITY;
-    election_votes: map<bytes, list<vote_param>> = [];
     election_categories: map<string, category>;
     election_candidates: map<string, candidate>;
     election_votes_count: nat = 0;
+}
+
+asset election_votes identified by election to big_map {
+    election : string;
+    votes: map<bytes, list<vote_param>> = [];
 }
 
 function validate_election(e: election_param): bool {
@@ -114,9 +118,9 @@ function is_during_election(s: date, d: date): bool {
 }
 
 entry create_election(e: election_param) {
-    do_require(not election.contains(e.election_id_param), ELECTION_EXISTS);
+    do_require(not election_metadata.contains(e.election_id_param), ELECTION_EXISTS);
     const params_valid = validate_election(e);
-    election.add({
+    election_metadata.add({
         election_id = e.election_id_param ;
         election_organizer = e.election_organizer_param;
         election_title = e.election_title_param;
@@ -130,21 +134,24 @@ entry create_election(e: election_param) {
         election_visibility = e.election_visibility_param;
         election_categories  = e.election_categories_param;
         election_candidates  = e.election_candidates_param
+    });
+    election_votes.add({
+        election = e.election_id_param
     })
 }
 
 entry update_election(e: election_param) {
-    do_require(election.contains(e.election_id_param), INVALID_ELECTION);
+    do_require(election_metadata.contains(e.election_id_param), INVALID_ELECTION);
     const params_valid = validate_election(e);
-    do_require(caller = election[e.election_id_param].election_organizer, INVALID_CALLER);
+    do_require(caller = election_metadata[e.election_id_param].election_organizer, INVALID_CALLER);
     do_require(
         is_pre_election(
-            election[e.election_id_param].election_start_time,
-            election[e.election_id_param].election_stop_time
+            election_metadata[e.election_id_param].election_start_time,
+            election_metadata[e.election_id_param].election_stop_time
         ),
         INVALID_PERIOD
     );
-    election.add({
+    election_metadata.add({
         election_id = e.election_id_param ;
         election_organizer = e.election_organizer_param;
         election_title = e.election_title_param;
@@ -163,13 +170,13 @@ entry update_election(e: election_param) {
 
 entry add_pub_key(e_id: string, pub_key: key) {
     require {
-        r1: election.contains(e_id) otherwise INVALID_ELECTION;
-        r2: caller = election[e_id].election_organizer otherwise INVALID_CALLER;
-        r3: not election[e_id].election_pub_keys.contains(pub_key) otherwise INVALID_PUB_KEY
+        r1: election_metadata.contains(e_id) otherwise INVALID_ELECTION;
+        r2: caller = election_metadata[e_id].election_organizer otherwise INVALID_CALLER;
+        r3: not election_metadata[e_id].election_pub_keys.contains(pub_key) otherwise INVALID_PUB_KEY
     }
 
     effect {
-        election[e_id].election_pub_keys.add(pub_key)
+        election_metadata[e_id].election_pub_keys.add(pub_key)
     }
 }
 
@@ -182,11 +189,11 @@ function validate_token(epubs: set<key>, token: bytes): bool {
     return is_token_valid
 }
 
-function validate_vote(e: asset_value<election>, t: bytes): bool {
+function validate_vote(e: asset_value<election_metadata>, t: bytes): bool {
     do_require(is_during_election(e.election_start_time, e.election_stop_time), INVALID_PERIOD);
     if e.election_visibility = private then begin
         do_require(validate_token(e.election_pub_keys, t), INVALID_TOKEN);
-        do_fail_if(contains(e.election_votes, t), INVALID_TOKEN_USED)
+        do_fail_if(contains(election_votes[e.election_id].votes, t), INVALID_TOKEN_USED)
     end;
     return true
 }
@@ -196,8 +203,8 @@ entry register_vote(v: vote) {
     | some(t) -> t
     | none -> 0x00
     end;
-    var e: asset_value<election> = [];
-    match election[v.vote_election_id] with
+    var e: asset_value<election_metadata> = [];
+    match election_metadata[v.vote_election_id] with
     | some(ve) -> if validate_vote(ve, token) then e := ve else fail(INVALID_VOTE)
     | none -> fail(INVALID_ELECTION) 
     end;
@@ -236,18 +243,18 @@ entry register_vote(v: vote) {
         | none -> 0 + vp.number_of_votes
         end;
         e_cand.candidate_votes_count := some(e_cand_votes_count);
-        election.update(v.vote_election_id, {
+        election_metadata.update(v.vote_election_id, {
             election_votes_count += vp.number_of_votes;
             election_categories += [(vp.vote_category_id, e_cat)];
             election_candidates += [(vp.vote_canditate_id, e_cand)]
         });
 
     done;
-    token := match election[v.vote_election_id].election_visibility with
+    token := match election_metadata[v.vote_election_id].election_visibility with
     | private -> token
-    | public -> pack(election[v.vote_election_id].election_votes_count)
+    | public -> pack(election_metadata[v.vote_election_id].election_votes_count)
     end;
-    election[v.vote_election_id].election_votes.put(token, v.vote_params)
+    election_votes[v.vote_election_id].votes.put(token, v.vote_params)
 }
 
 /* OWNERSHIP TRANSFER ------------------------------------------------------- */
