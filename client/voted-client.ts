@@ -91,13 +91,12 @@ function buildVote(vote: Vote): any[] {
     ];
 }
 
-function buildVoteParam(voteParam: VoteParam): any[] {
-    return [
-        voteParam.canditate_id,
-        voteParam.category_id,
-        voteParam.number_of_votes
-    ];
-
+function buildVoteParam(voteParam: VoteParam): any {
+    return {
+        vote_canditate_id: voteParam.canditate_id,
+        vote_category_id: voteParam.category_id,
+        number_of_votes: voteParam.number_of_votes
+    };
 }
 
 function buildMap(mapargs: { [key: string]: any }): MichelsonMap<string, any[]> {
@@ -273,9 +272,7 @@ export class SimpleVoteContractClient {
             voteDetails.token = voteDetails.token == null ?
                 voteDetails.token : buf2hex(base58.decode(voteDetails.token) as Buffer);
             const voteData = buildVote(voteDetails);
-            const prams = this.contract?.methods.register_vote(...voteData).toTransferParams({amount});
-            console.log(JSON.stringify(prams, null, 2));
-            
+
             const op = await this.contract?.methods
                 .register_vote(...voteData)
                 .send({ amount });
