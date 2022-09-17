@@ -59,7 +59,6 @@ record election_param {
     election_stop_time_param: date;
     election_pub_keys_param: set<key>;
     election_mode_param: ELECTION_MODE;
-    election_active_param: bool;
     election_cost_per_vote_param: tez;
     election_visibility_param: ELECTION_VISIBILITY;
     election_categories_param: map<string, category>;
@@ -75,7 +74,6 @@ asset election_metadata identified by election_id to big_map {
     election_stop_time: date;
     election_pub_keys: set<key>;
     election_mode: ELECTION_MODE;
-    election_active: bool = true;
     election_cost_per_vote: tez = 0tz;
     election_visibility: ELECTION_VISIBILITY;
     election_categories: map<string, category>;
@@ -129,7 +127,6 @@ entry create_election(e: election_param) {
         election_stop_time = e.election_stop_time_param;
         election_pub_keys = e.election_pub_keys_param;
         election_mode = e.election_mode_param;
-        election_active = e.election_active_param;
         election_cost_per_vote = e.election_cost_per_vote_param;
         election_visibility = e.election_visibility_param;
         election_categories  = e.election_categories_param;
@@ -160,7 +157,6 @@ entry update_election(e: election_param) {
         election_stop_time = e.election_stop_time_param;
         election_pub_keys = e.election_pub_keys_param;
         election_mode = e.election_mode_param;
-        election_active = e.election_active_param;
         election_cost_per_vote = e.election_cost_per_vote_param;
         election_visibility = e.election_visibility_param;
         election_categories  = e.election_categories_param;
@@ -172,7 +168,11 @@ entry add_pub_key(e_id: string, pub_key: key) {
     require {
         r1: election_metadata.contains(e_id) otherwise INVALID_ELECTION;
         r2: caller = election_metadata[e_id].election_organizer otherwise INVALID_CALLER;
-        r3: not election_metadata[e_id].election_pub_keys.contains(pub_key) otherwise INVALID_PUB_KEY
+        r3: not election_metadata[e_id].election_pub_keys.contains(pub_key) otherwise INVALID_PUB_KEY;
+        r4: is_pre_election(
+                election_metadata[e_id].election_start_time,
+                election_metadata[e_id].election_stop_time
+            ) otherwise INVALID_PERIOD
     }
 
     effect {
