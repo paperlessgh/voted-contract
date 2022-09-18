@@ -71,7 +71,8 @@ import { ELECTION_VISIBILITY, SimpleVoteContractClient } from "./voted-client";
             break;
         case "show":
             const election = await sv.getVoteData(electionData.id);
-            console.log(JSON.stringify(election, null, 2));
+            console.log(election);
+            break
         default:
             console.log("Usage: ts-node index.ts [publish | vote]");
             break;
