@@ -335,12 +335,12 @@ export class SimpleVoteContractClient {
             start_time: election.election_start_time, //  microseconds
             stop_time: election.election_stop_time, // microseconds
             pub_keys: election.election_pub_keys,
-            mode: election.election_mode,
-            cost_per_vote: election.election_cost_per_vote?.toNumber() ?? 0, // mutez
-            visibility: election.election_visibility,
+            mode: election.election_mode?.toNumber(),
+            cost_per_vote: election.election_cost_per_vote?.toNumber(), // mutez
+            visibility: election.election_visibility?.toNumber(),
             categories: michelsonMapToMap(election.election_categories),
             candidates: michelsonMapToMap(election.election_candidates),
-            votes_count: election.election_votes_count?.toNumber() ?? 0
+            votes_count: election.election_votes_count?.toNumber()
         }
     }
 
