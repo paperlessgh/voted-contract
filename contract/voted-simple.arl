@@ -187,8 +187,8 @@ entry update_election(e: election_param) {
         ),
         INVALID_PERIOD
     );
-    election_metadata.add({
-        election_id = e.election_id_param ;
+    election_metadata.update(e.election_id_param,
+    {
         election_organizer = e.election_organizer_param;
         election_title = e.election_title_param;
         election_description = e. election_description_param;
