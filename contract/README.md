@@ -15,3 +15,4 @@ This contract uses archetype https://archetype-lang.org/ . Archetype comes along
 |v1.0.0|https://better-call.dev/ghostnet/KT1HqX4o8KvSj1SHzuW8tLNX2oZPin5EdPW4|
 |v1.0.0|https://better-call.dev/ghostnet/KT1TaMdhubw4vik8KrZiqdUQw2u1kWTPgfo4|
 |v2.0.0|https://better-call.dev/ghostnet/KT1F5rjUByiZzGaVT7kZvKoeKWzK7xuTXZEG|
+|v2.0.0|https://better-call.dev/ghostnet/KT1UyHwRZmeug7Z5SJPpaMM5YHAp7C7k97V6|

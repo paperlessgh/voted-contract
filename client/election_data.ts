@@ -92,11 +92,11 @@ const candidates: {[key:string]: Candidate} = {
 };
 
 const start = new Date();
-start.setDate(start.getDate() + 1);
+start.setMinutes(start.getMinutes() + 5);
 const start_value = Math.floor(start.getTime() / 1000).toString();
 
 const end = new Date();
-end.setDate(end.getDate() + 8);
+end.setHours(end.getHours() + 6);
 const end_value = Math.floor(end.getTime() / 1000).toString()
 
 export const electionData: Election =  {

@@ -128,17 +128,17 @@ function buildIdea(idea: Idea): { [key: string]: any } {
     let newObj: { [key: string]: any } = obj;
     if (isType<Candidate>(obj, "category_id")) {
         newObj = {
-            candidate_title: obj.title,
-            candidate_description: obj.description,
-            candidate_category_id: obj.category_id,
+            candidate_title_param: obj.title,
+            candidate_description_param: obj.description,
+            candidate_category_id_param: obj.category_id,
         }
     }
 
     if (isType<Category>(obj, "vote_limit")) {
         newObj = {
-            category_title: obj.title,
-            category_description: obj.description,
-            category_vote_limit: obj.vote_limit,
+            category_title_param: obj.title,
+            category_description_param: obj.description,
+            category_vote_limit_param: obj.vote_limit,
         }
     }
 

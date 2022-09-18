@@ -24,18 +24,30 @@ enum ELECTION_MODE = | free | paid
 
 enum ELECTION_PERIOD = | pre | during | after
 
+record category_param {
+    category_title_param: string;
+    category_description_param: string;
+    category_vote_limit_param: nat;
+}
+
+record candidate_param {
+    candidate_title_param: string;
+    candidate_description_param: string;
+    candidate_category_id_param: string;
+}
+
 record category {
     category_title: string;
     category_description: string;
     category_vote_limit: nat = 1;
-    category_votes_count: option<nat> = some(0);
+    category_votes_count: nat = 0;
 }
 
 record candidate {
     candidate_title: string;
     candidate_description: string;
     candidate_category_id: string;
-    candidate_votes_count: option<nat> = some(0);
+    candidate_votes_count: nat = 0;
 }
 
 record vote_param {
@@ -61,8 +73,8 @@ record election_param {
     election_mode_param: ELECTION_MODE;
     election_cost_per_vote_param: tez;
     election_visibility_param: ELECTION_VISIBILITY;
-    election_categories_param: map<string, category>;
-    election_candidates_param: map<string, candidate>;
+    election_categories_param: map<string, category_param>;
+    election_candidates_param: map<string, candidate_param>;
 }
 
 asset election_metadata identified by election_id to big_map {
@@ -89,10 +101,13 @@ asset election_votes identified by election to big_map {
 function validate_election(e: election_param): bool {
     do_require(e.election_start_time_param > now, INVALID_START_TIME);
     do_require(e.election_stop_time_param > e.election_start_time_param, INVALID_STOP_TIME);
-    if e.election_mode_param = paid then do_require(e.election_cost_per_vote_param > 0tz, INVALID_COST_PER_VOTE);
+    match e.election_mode_param with
+    | paid -> do_require(e.election_cost_per_vote_param >= 0tz, INVALID_COST_PER_VOTE)
+    | free -> do_require(e.election_cost_per_vote_param = 0tz, INVALID_COST_PER_VOTE)
+    end;
     for (ck, cpv) in e.election_candidates_param do
         do_require(
-            contains(e.election_categories_param, cpv.candidate_category_id),
+            contains(e.election_categories_param, cpv.candidate_category_id_param),
             INVALID_CATEGORY
         )
     done;
@@ -115,11 +130,35 @@ function is_during_election(s: date, d: date): bool {
     return (election_period(s, d) = during)
 }
 
+function build_category(c: map<string, category_param>): map<string, category> {
+    var cat: map<string, category> = [];
+    for (k, v) in c do
+        cat.put(k, {
+            category_title = v.category_title_param;
+            category_description = v.category_description_param;
+            category_vote_limit = v.category_vote_limit_param
+        })
+    done;
+    return cat
+}
+
+function build_candidate(c: map<string, candidate_param>): map<string, candidate> {
+    var can: map<string, candidate> = [];
+    for (k, v) in c do
+        can.put(k, {
+            candidate_title = v.candidate_title_param;
+            candidate_description = v.candidate_description_param;
+            candidate_category_id = v.candidate_category_id_param
+        })
+    done;
+    return can
+}
+
 entry create_election(e: election_param) {
     do_require(not election_metadata.contains(e.election_id_param), ELECTION_EXISTS);
     const params_valid = validate_election(e);
     election_metadata.add({
-        election_id = e.election_id_param ;
+        election_id = e.election_id_param;
         election_organizer = e.election_organizer_param;
         election_title = e.election_title_param;
         election_description = e. election_description_param;
@@ -129,8 +168,8 @@ entry create_election(e: election_param) {
         election_mode = e.election_mode_param;
         election_cost_per_vote = e.election_cost_per_vote_param;
         election_visibility = e.election_visibility_param;
-        election_categories  = e.election_categories_param;
-        election_candidates  = e.election_candidates_param
+        election_categories  = build_category(e.election_categories_param);
+        election_candidates  = build_candidate(e.election_candidates_param)
     });
     election_votes.add({
         election = e.election_id_param
@@ -159,8 +198,8 @@ entry update_election(e: election_param) {
         election_mode = e.election_mode_param;
         election_cost_per_vote = e.election_cost_per_vote_param;
         election_visibility = e.election_visibility_param;
-        election_categories  = e.election_categories_param;
-        election_candidates  = e.election_candidates_param
+        election_categories  = build_category(e.election_categories_param);
+        election_candidates  = build_candidate(e.election_candidates_param)
     })
 } 
 
@@ -217,33 +256,23 @@ entry register_vote(v: vote) {
         const vote_cost = e.election_cost_per_vote * vp.number_of_votes;
         vote_cost_check -= vote_cost;
         if contains(vote_limit_check, vp.vote_category_id) then begin
-           const v_limit: nat = match vote_limit_check[vp.vote_category_id] with
-            | some(vl)-> vl
-            | none -> 0 
-            end;
-            const s: nat = v_limit + vp.number_of_votes;
+            const votes_counted: nat ?= vote_limit_check[vp.vote_category_id] : INVALID_CATEGORY;
+            const s: nat = votes_counted + vp.number_of_votes;
             vote_limit_check.update(
                 vp.vote_category_id,
                 some(s)
             )
         end else vote_limit_check.put(vp.vote_category_id, vp.number_of_votes);
         var e_cat : category ?= e.election_categories[vp.vote_category_id] : INVALID_CATEGORY;
-        const v_limit: nat = match vote_limit_check[vp.vote_category_id] with
-        | some(vl)-> vl
-        | none -> 0 
-        end;
+        const total_vote_counts: nat ?= vote_limit_check[vp.vote_category_id] : INVALID_CATEGORY;
         do_require(
-            e_cat.category_vote_limit < v_limit,
+            e_cat.category_vote_limit < total_vote_counts,
             INVALID_VOTE_COUNT
         );
-        do_require(vote_cost_check > 0tz, INSUFFICIENT_AMOUT);
+        if e.election_mode = paid then do_require(vote_cost_check >= 0tz, INSUFFICIENT_AMOUT);
         var e_cand : candidate ?= e.election_candidates[vp.vote_canditate_id] : INVALID_CANDIDATE;
-        e_cat.category_votes_count := some(v_limit);
-        var e_cand_votes_count : nat = match e_cand.candidate_votes_count with
-        | some(vc) -> vc + vp.number_of_votes
-        | none -> 0 + vp.number_of_votes
-        end;
-        e_cand.candidate_votes_count := some(e_cand_votes_count);
+        e_cat.category_votes_count := total_vote_counts;
+        e_cand.candidate_votes_count := e_cand.candidate_votes_count + vp.number_of_votes;
         election_metadata.update(v.vote_election_id, {
             election_votes_count += vp.number_of_votes;
             election_categories += [(vp.vote_category_id, e_cat)];
