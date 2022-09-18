@@ -340,7 +340,7 @@ export class SimpleVoteContractClient {
             visibility: election.election_visibility,
             categories: michelsonMapToMap(election.election_categories),
             candidates: michelsonMapToMap(election.election_candidates),
-            votes_count: election.election_votes_count
+            votes_count: election.election_votes_count?.toNumber() ?? 0
         }
     }
 
