@@ -113,7 +113,7 @@ The following data would need to be persisted on the smart contract.
 3. Candidate
 4. Vote
 
-#### **Election**
+#### **Election Metadata**
 
 The election storage is a big\_map with keys as election\_id and value is a record containing the following data;
 
@@ -130,8 +130,23 @@ The election storage is a big\_map with keys as election\_id and value is a reco
 - **title** - title of the election.
 - **description** - description of the election.
 - **pub\_keys** - public keys that are related to the election tokens.
-- **votes** - populated as votes are being cast
 - **vote_count** - records number of votes
+
+#### **Election Tokens Used**
+A seprate big\_map with key as eletion_\id and value is a set containing validated and used tokens.
+
+- **election** - the id of the election in question
+- **tokens_used** - a set containing all the tokens that have been validated and used to place votes
+
+##### Note
+
+- The actual vote placed by the user is not recorded in the smart contract storage.
+- The only reason to record that is for historical purpose or to 
+- allow voter to directly verify their votes were submitted as they wanted.
+- This can be done by filtering the transaction history of the smart contract.
+- In other words it suffices to show that the `record_vote` transaction placed by the user was successfull.
+- This is because the code is open and deterministic, and hence given the same input, the output or effects can be determined.
+
 
 #### **Category**
 

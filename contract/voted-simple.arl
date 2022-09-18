@@ -93,9 +93,9 @@ asset election_metadata identified by election_id to big_map {
     election_votes_count: nat = 0;
 }
 
-asset election_votes identified by election to big_map {
+asset election_tokens_used identified by election to big_map {
     election : string;
-    votes: map<bytes, list<vote_param>> = [];
+    tokens_used: set<bytes> = [];
 }
 
 function validate_election(e: election_param): bool {
@@ -171,7 +171,7 @@ entry create_election(e: election_param) {
         election_categories  = build_category(e.election_categories_param);
         election_candidates  = build_candidate(e.election_candidates_param)
     });
-    election_votes.add({
+    election_tokens_used.add({
         election = e.election_id_param
     })
 }
@@ -232,7 +232,7 @@ function validate_vote(k : asset_key<election_metadata>, e: asset_value<election
     do_require(is_during_election(e.election_start_time, e.election_stop_time), INVALID_PERIOD);
     if e.election_visibility = private then begin
         do_require(validate_token(e.election_pub_keys, t), INVALID_TOKEN);
-        do_fail_if(contains(election_votes[k].votes, t), INVALID_TOKEN_USED)
+        do_fail_if(contains(election_tokens_used[k].tokens_used, t), INVALID_TOKEN_USED)
     end;
     return true
 }
@@ -280,11 +280,9 @@ entry register_vote(v: vote) {
         });
 
     done;
-    token := match election_metadata[v.vote_election_id].election_visibility with
-    | private -> token
-    | public -> pack(election_metadata[v.vote_election_id].election_votes_count)
-    end;
-    election_votes[v.vote_election_id].votes.put(token, v.vote_params)
+    if election_metadata[v.vote_election_id].election_visibility = private then begin
+        election_tokens_used[v.vote_election_id].tokens_used.add(token)
+    end
 }
 
 /* OWNERSHIP TRANSFER ------------------------------------------------------- */
@@ -312,5 +310,14 @@ entry collect(collector : address) {
   called by owner
   effect {
     transfer balance to collector
+  }
+}
+
+/* METADATA ---------------------------------------------------------------- */
+
+entry set_metadata(k: string, d : option<bytes>) {
+  called by owner
+  effect {
+    metadata.update(k, d)
   }
 }

@@ -27,7 +27,7 @@ import { SimpleVoteContractClient } from "./voted-client";
             break;
         case "token":
             console.log("Generating tokens ...");
-            const tokes = await sv.generateTokens(electionData.id, 1);
+            const tokes = await sv.generateTokens(electionData.id, 3);
             if (tokes == null) {
                 console.log(`Generated is null ${tokes}`);
                 return;
