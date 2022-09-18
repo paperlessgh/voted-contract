@@ -92,15 +92,15 @@ const candidates: {[key:string]: Candidate} = {
 };
 
 const start = new Date();
-start.setMinutes(start.getMinutes() + 5);
+start.setMinutes(start.getMinutes() + 3);
 const start_value = Math.floor(start.getTime() / 1000).toString();
 
 const end = new Date();
-end.setHours(end.getHours() + 6);
+end.setMinutes(end.getMinutes() + 30);
 const end_value = Math.floor(end.getTime() / 1000).toString()
 
 export const electionData: Election =  {
-    id: "simply-voted",
+    id: "simple-voted",
     organizer: "",
     titlle: "Paperless Voting",
     description: "Simple Paperless Voting",

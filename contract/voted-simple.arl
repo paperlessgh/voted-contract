@@ -265,7 +265,7 @@ entry register_vote(v: vote) {
         end else vote_limit_check.put(vp.vote_category_id, vp.number_of_votes);
         var e_cat : category ?= e.election_categories[vp.vote_category_id] : INVALID_CATEGORY;
         const total_vote_counts: nat ?= vote_limit_check[vp.vote_category_id] : INVALID_CATEGORY;
-        do_require(
+        do_fail_if(
             e_cat.category_vote_limit < total_vote_counts,
             INVALID_VOTE_COUNT
         );
