@@ -62,6 +62,10 @@ export interface Election {
     candidates: { [key: string]: Candidate };
 }
 
+export interface ElectionVoteData extends Election {
+    votes_count: number
+}
+
 function isType<T>(obj: any, prop: string): obj is T {
     return obj[prop] !== undefined;
 }
@@ -143,6 +147,14 @@ function buildIdea(idea: Idea): { [key: string]: any } {
     }
 
     return newObj;
+}
+
+function michelsonMapToMap(mmap: MichelsonMap<string, any>): {[key: string]: any} {
+    const nmap: {[key: string]: any} = {};
+    mmap.forEach((val: any, key: string) => {
+        nmap[key] = val;
+    });
+    return nmap
 }
 
 
@@ -312,9 +324,24 @@ export class SimpleVoteContractClient {
         }
     }
 
-    async getVoteData(electionId: string): Promise<any> {
+    async getVoteData(electionId: string): Promise<ElectionVoteData | null> {
         const election = await this.getElectionData(electionId);
-        return election;
+        if (election == null) return null;
+        return {
+            id: election.election_id,
+            organizer: election.election_organizer,
+            titlle: election.election_title,
+            description: election.election_description,
+            start_time: election.election_start_time, //  microseconds
+            stop_time: election.election_stop_time, // microseconds
+            pub_keys: election.election_pub_keys,
+            mode: election.election_mode,
+            cost_per_vote: election.election_cost_per_vote?.toNumber() ?? 0, // mutez
+            visibility: election.election_visibility,
+            categories: michelsonMapToMap(election.election_categories),
+            candidates: michelsonMapToMap(election.election_candidates),
+            votes_count: election.election_votes_count
+        }
     }
 
     async generateTokens(

@@ -267,14 +267,14 @@ entry register_vote(v: vote) {
             )
         end else vote_limit_check.put(vp.vote_category_id, vp.number_of_votes);
         var e_cat : category ?= e.election_categories[vp.vote_category_id] : INVALID_CATEGORY;
-        const total_vote_counts: nat ?= vote_limit_check[vp.vote_category_id] : INVALID_CATEGORY;
+        const total_category_vote_counts: nat ?= vote_limit_check[vp.vote_category_id] : INVALID_CATEGORY;
         do_fail_if(
-            e_cat.category_vote_limit < total_vote_counts,
+            e_cat.category_vote_limit < total_category_vote_counts,
             INVALID_VOTE_COUNT
         );
         if e.election_mode = paid then do_require(vote_cost_check >= 0tz, INSUFFICIENT_AMOUT);
         var e_cand : candidate ?= e.election_candidates[vp.vote_canditate_id] : INVALID_CANDIDATE;
-        e_cat.category_votes_count := total_vote_counts;
+        e_cat.category_votes_count := e_cat.category_votes_count + vp.number_of_votes;
         e_cand.candidate_votes_count := e_cand.candidate_votes_count + vp.number_of_votes;
         election_metadata.update(v.vote_election_id, {
             election_votes_count += vp.number_of_votes;

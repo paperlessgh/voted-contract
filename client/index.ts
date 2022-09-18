@@ -4,7 +4,7 @@ import { ELECTION_VISIBILITY, SimpleVoteContractClient } from "./voted-client";
 
 (async () => {
     const organizerPrivateKey = "edsk3QoqBuvdamxouPhin7swCvkQNgq4jP5KZPbwWNnwdZpSpJiEbq";
-    const contractAddress = "KT18zWDFTai5xjyF312AkUTiScqrDwfPbuZw";
+    const contractAddress = "KT1BB156fufHaowWJ46UHt1JGXMYPc47Hjku";
     const rpcUrl = "https://ghostnet.ecadinfra.com";
     const tzktGhostnet = "https://ghostnet.tzkt.io";
 
@@ -69,6 +69,9 @@ import { ELECTION_VISIBILITY, SimpleVoteContractClient } from "./voted-client";
                 console.log(`The vote was successfull ${tzktGhostnet}/${votedOpHash}`);
             }
             break;
+        case "show":
+            const election = await sv.getVoteData(electionData.id);
+            console.log(JSON.stringify(election, null, 2));
         default:
             console.log("Usage: ts-node index.ts [publish | vote]");
             break;
