@@ -100,7 +100,7 @@ end.setMinutes(end.getMinutes() + 30);
 const end_value = Math.floor(end.getTime() / 1000).toString()
 
 export const electionData: Election =  {
-    id: "simple-voted",
+    id: "simply-voted",
     organizer: "",
     titlle: "Paperless Voting",
     description: "Simple Paperless Voting",
@@ -119,19 +119,19 @@ export const electionData: Election =  {
 const vp1: VoteParam =  {
     canditate_id: "a",
     category_id: "1",
-    number_of_votes: 1
+    number_of_votes: 3
 }
 
 const vp2: VoteParam =  {
     canditate_id: "b",
     category_id: "2",
-    number_of_votes: 1
+    number_of_votes: 3
 }
 
 const vp3: VoteParam =  {
     canditate_id: "c",
     category_id: "3",
-    number_of_votes: 1
+    number_of_votes: 3
 }
 
 export const v1: Vote = {

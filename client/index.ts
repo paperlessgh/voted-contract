@@ -4,7 +4,7 @@ import { SimpleVoteContractClient } from "./voted-client";
 
 (async () => {
     const organizerPrivateKey = "edsk3QoqBuvdamxouPhin7swCvkQNgq4jP5KZPbwWNnwdZpSpJiEbq";
-    const contractAddress = "KT1SYJUKNrrGHwC4nBZJoqijyGf6Fa4P1vr6";
+    const contractAddress = "KT1HigPEf5kwKAugixp7xMQxpp6J15rZ9v2u";
     const rpcUrl = "https://ghostnet.ecadinfra.com";
     const tzktGhostnet = "https://ghostnet.tzkt.io";
 
