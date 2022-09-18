@@ -328,7 +328,7 @@ export class SimpleVoteContractClient {
         const election = await this.getElectionData(electionId);
         if (election == null) return null;
         return {
-            id: election.election_id,
+            id: electionId,
             organizer: election.election_organizer,
             titlle: election.election_title,
             description: election.election_description,

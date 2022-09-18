@@ -1,5 +1,5 @@
 import { electionData, v1 } from "./election_data";
-import { ELECTION_VISIBILITY, SimpleVoteContractClient } from "./voted-client";
+import { ElectionVoteData, ELECTION_VISIBILITY, SimpleVoteContractClient } from "./voted-client";
 
 
 (async () => {
@@ -70,7 +70,7 @@ import { ELECTION_VISIBILITY, SimpleVoteContractClient } from "./voted-client";
             }
             break;
         case "show":
-            const election = await sv.getVoteData(electionData.id);
+            const election: ElectionVoteData | null = await sv.getVoteData(electionData.id);
             console.log(election);
             break
         default:
