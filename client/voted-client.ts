@@ -56,7 +56,7 @@ export interface Election {
     stop_time: string; // microseconds
     pub_keys: string[];
     mode: ELECTION_MODE;
-    cost_per_vote: number;
+    cost_per_vote: number; // mutez
     visibility: ELECTION_VISIBILITY;
     categories: { [key: string]: Category };
     candidates: { [key: string]: Candidate };
@@ -76,7 +76,7 @@ function buildElection(election: Election): any[] {
         election.stop_time, // microseconds
         election.pub_keys,
         election.mode,
-        election.cost_per_vote,
+        election.cost_per_vote, // mutez
         election.visibility,
         buildMap(election.categories),
         buildMap(election.candidates),
@@ -150,7 +150,6 @@ export class SimpleVoteContractClient {
 
     private tezos: TezosToolkit;
     private contract?: WalletContract;
-    private signerSet: boolean = false;
     private contractAddress: string;
 
     constructor(
@@ -165,7 +164,6 @@ export class SimpleVoteContractClient {
 
     private setSigner(privateKey: string) {
         this.tezos.setSignerProvider(new InMemorySigner(privateKey));
-        this.signerSet = true;
     }
 
     private async setContract() {
@@ -243,6 +241,15 @@ export class SimpleVoteContractClient {
         }
     }
 
+    private async computeVoteCost(vote: Vote): Promise<number> {
+        const electionData = await this.getElectionData(vote.election_id);
+        if (electionData == null) return 0;
+        let cost_per_vote = electionData.election_cost_per_vote ?? 0;
+        cost_per_vote = cost_per_vote?.toNumber() ?? 0
+        const amount = vote.vote_params.reduce((a, b) => a + b.number_of_votes*cost_per_vote, 0);
+        return amount;
+    }
+
     async publishElection(
         electionDetails: Election,
     ): Promise<string | undefined> {
@@ -265,21 +272,21 @@ export class SimpleVoteContractClient {
 
     async recordVote(
         voteDetails: Vote,
-        amount: number = 0
     ): Promise<string | null> {
         try {
             await this.setContract();
+            
             voteDetails.token = voteDetails.token == null ?
                 voteDetails.token : buf2hex(base58.decode(voteDetails.token) as Buffer);
             const voteData = buildVote(voteDetails);
-
+            const amount = await this.computeVoteCost(voteDetails);
             const op = await this.contract?.methods
                 .register_vote(...voteData)
-                .send({ amount });
+                .send({ amount, mutez: true });
             await op?.confirmation();
             return op!.opHash;
         } catch (error) {
-            console.log(error);
+            console.log(JSON.stringify(error, null, 2));
             return null;
         }
     }

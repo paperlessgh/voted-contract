@@ -100,15 +100,15 @@ end.setMinutes(end.getMinutes() + 30);
 const end_value = Math.floor(end.getTime() / 1000).toString()
 
 export const electionData: Election =  {
-    id: "simply-voted",
+    id: "simple-paid-private-voting",
     organizer: "",
     titlle: "Paperless Voting",
     description: "Simple Paperless Voting",
     start_time: start_value,
     stop_time: end_value,
     pub_keys: [],
-    mode: ELECTION_MODE.free,
-    cost_per_vote: 0,
+    mode: ELECTION_MODE.paid,
+    cost_per_vote: 1000000, // mutez
     visibility: ELECTION_VISIBILITY.private,
     categories: categories,
     candidates: candidates,

@@ -2,7 +2,8 @@ archetype voted_simple(owner: address) with metadata ""
 
 constant INVALID_START_TIME: string = "INVALID START TIME"
 constant INVALID_STOP_TIME: string = "INVALID STOP TIME"
-constant INVALID_COST_PER_VOTE: string = "COST PER VOTE SHOULD BE GREATER THAN ZER0"
+constant INVALID_COST_PER_VOTE_GREATER: string = "COST PER VOTE SHOULD BE GREATER THAN ZER0"
+constant INVALID_COST_PER_VOTE_ZERO: string = "COST PER VOTE SHOULD BE ZER0"
 constant INVALID_CATEGORY: string = "CATEGORY DOES NOT EXIST"
 constant INVALID_CANDIDATE: string = "CANDIDATE DOES NOT EXIST"
 constant INVALID_CALLER: string = "CALLER IS UNAUTHORIZED"
@@ -17,6 +18,7 @@ constant INVALID_TOKEN_USED: string = "INVALID TOKEN USED"
 constant DUPLICATE_CATEGORY: string = "CANNOT HAVE MORE THAT ONE VOTE PARAM IN SAME CATEGORY"
 constant INSUFFICIENT_AMOUT: string = "INSUFFICIENT AMOUNT TO PAY FOR VOTE"
 constant INVALID_VOTE_COUNT: string = "THERE ARE TOO MANY VOTES THAN ALLOWED"
+constant INVALID_ELECTION_VISIBILITY: string = "ELECTION VISIBILITY DOESNT ALLOW THIS OPERATION"
 
 enum ELECTION_VISIBILITY = | public | private
 
@@ -102,8 +104,8 @@ function validate_election(e: election_param): bool {
     do_require(e.election_start_time_param > now, INVALID_START_TIME);
     do_require(e.election_stop_time_param > e.election_start_time_param, INVALID_STOP_TIME);
     match e.election_mode_param with
-    | paid -> do_require(e.election_cost_per_vote_param >= 0tz, INVALID_COST_PER_VOTE)
-    | free -> do_require(e.election_cost_per_vote_param = 0tz, INVALID_COST_PER_VOTE)
+    | paid -> do_require(e.election_cost_per_vote_param >= 0tz, INVALID_COST_PER_VOTE_GREATER)
+    | free -> do_require(e.election_cost_per_vote_param = 0tz, INVALID_COST_PER_VOTE_ZERO)
     end;
     for (ck, cpv) in e.election_candidates_param do
         do_require(
@@ -211,7 +213,8 @@ entry add_pub_key(e_id: string, pub_key: key) {
         r4: is_pre_election(
                 election_metadata[e_id].election_start_time,
                 election_metadata[e_id].election_stop_time
-            ) otherwise INVALID_PERIOD
+            ) otherwise INVALID_PERIOD;
+        r5: election_metadata[e_id].election_visibility = private otherwise INVALID_ELECTION_VISIBILITY
     }
 
     effect {

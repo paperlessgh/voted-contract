@@ -1,7 +1,7 @@
 {
     "dependencies": {
-        "@taquito/signer": "^13.0.1",
-        "@taquito/taquito": "^13.0.1",
+        "@taquito/signer": "^14.0.0",
+        "@taquito/taquito": "^14.0.0",
         "@tsconfig/recommended": "^1.0.1",
         "bip39": "^3.0.4",
         "bs58": "^5.0.0",

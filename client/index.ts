@@ -1,10 +1,10 @@
 import { electionData, v1 } from "./election_data";
-import { SimpleVoteContractClient } from "./voted-client";
+import { ELECTION_VISIBILITY, SimpleVoteContractClient } from "./voted-client";
 
 
 (async () => {
     const organizerPrivateKey = "edsk3QoqBuvdamxouPhin7swCvkQNgq4jP5KZPbwWNnwdZpSpJiEbq";
-    const contractAddress = "KT1JeSNxvQ5Snm1AgiFggja6G2zcYUiHEzg9";
+    const contractAddress = "KT18zWDFTai5xjyF312AkUTiScqrDwfPbuZw";
     const rpcUrl = "https://ghostnet.ecadinfra.com";
     const tzktGhostnet = "https://ghostnet.tzkt.io";
 
@@ -53,10 +53,11 @@ import { SimpleVoteContractClient } from "./voted-client";
             break;
         case "vote":
             let vtoken: string | null = process.argv[3];
-            if (vtoken == null) {
-                console.log("You must pass a valid token. Example: ts-node index.ts vote (token)");
+            if ((vtoken == null) && (electionData.visibility == ELECTION_VISIBILITY.private)) {
+                console.log("You must pass a valid token if election is private. Example: ts-node index.ts vote (token)");
+                return;
             }
-            vtoken = vtoken.trim();
+            vtoken = vtoken?.trim();
 
             console.log("Placing votes ...");
             const votedOpHash = await sv.recordVote({ ...v1, token: vtoken });

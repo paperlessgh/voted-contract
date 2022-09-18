@@ -10,4 +10,4 @@ This contract uses archetype https://archetype-lang.org/ . Archetype comes along
 
 ### Latest Ghostnet deployment
 
-https://better-call.dev/ghostnet/KT1JeSNxvQ5Snm1AgiFggja6G2zcYUiHEzg9
+https://better-call.dev/ghostnet/KT18zWDFTai5xjyF312AkUTiScqrDwfPbuZw
