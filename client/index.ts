@@ -3,10 +3,10 @@ import { ElectionVoteData, ELECTION_VISIBILITY, SimpleVoteContractClient } from 
 
 
 (async () => {
-    const organizerPrivateKey = "edsk3QoqBuvdamxouPhin7swCvkQNgq4jP5KZPbwWNnwdZpSpJiEbq";
-    const contractAddress = "KT1BB156fufHaowWJ46UHt1JGXMYPc47Hjku";
-    const rpcUrl = "https://ghostnet.ecadinfra.com";
-    const tzktGhostnet = "https://ghostnet.tzkt.io";
+    const organizerPrivateKey = "edskRhYeMahFUYEsVnAu6N4K9VmX7Dr1bHBEHSJkCQg8E5JS2GQgTPvTkXhf5DLWpFWeqJfiyWvmuWn4c1zv6HAdFs52HdYXev";
+    const contractAddress = "KT1HuYY5d2FPYvP1Na2ZJ14y5UpCP4GAy9sD";
+    const rpcUrl = "https://kathmandunet.ecadinfra.com";
+    const tzktGhostnet = "https://kathmandunet.tzkt.io";
 
     const action: "publish" | "token" | "vote" | string | null = process.argv[2];
 
